@@ -77,7 +77,7 @@ class FirestoreService {
         .limit(1)
         .get();
     if (existing.docs.isNotEmpty) {
-      throw Exception('登録中のアプリがあるため、新規登録できません。');
+      throw Exception('現在アクティブなアプリがあります。先に終了してください。');
     }
 
     await _apps.add({
@@ -112,8 +112,9 @@ class FirestoreService {
         .orderBy('lastOpenedAt', descending: true)
         .snapshots()
         .map(
-          (snapshot) =>
-              snapshot.docs.map((doc) => TestingModel.fromMap(doc.data())).toList(),
+          (snapshot) => snapshot.docs
+              .map((doc) => TestingModel.fromMap(doc.data()))
+              .toList(),
         );
   }
 
@@ -138,13 +139,13 @@ class FirestoreService {
     await _db.runTransaction((tx) async {
       final targetSnap = await tx.get(targetRef);
       if (!targetSnap.exists) {
-        throw Exception('対象アプリが存在しません。');
+        throw Exception('対象のアプリが見つかりません。');
       }
       final data = targetSnap.data()!;
       final isActive = (data['isActive'] ?? false) as bool;
       final remaining = (data['remainingExposure'] ?? 0) as int;
       if (!isActive || remaining <= 0) {
-        throw Exception('このアプリは現在表示対象外です。');
+        throw Exception('このアプリは現在テスト対象外です。');
       }
 
       tx.update(targetRef, {

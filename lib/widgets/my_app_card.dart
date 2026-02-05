@@ -29,11 +29,19 @@ class MyAppCard extends StatelessWidget {
               ),
               if (app.message.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text(app.message, style: const TextStyle(color: Colors.black54)),
+                Text(
+                  app.message,
+                  style: TextStyle(
+                    color: Theme.of(context)
+                        .colorScheme
+                        .onSurface
+                        .withOpacity(0.7),
+                  ),
+                ),
               ],
               const SizedBox(height: 8),
-              Text('残り露出枠: ${app.remainingExposure}'),
-              Text('他人がOpenした累計: ${app.openedCount}'),
+              Text('残り露出回数: ${app.remainingExposure}'),
+              Text('Open回数: ${app.openedCount}'),
             ],
           ),
         ),

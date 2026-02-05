@@ -41,7 +41,12 @@ class AppCard extends StatelessWidget {
                   if (app.message.isNotEmpty)
                     Text(
                       app.message,
-                      style: const TextStyle(color: Colors.black54),
+                      style: TextStyle(
+                        color: Theme.of(context)
+                            .colorScheme
+                            .onSurface
+                            .withOpacity(0.7),
+                      ),
                     ),
                   const SizedBox(height: 12),
                   FilledButton(
@@ -52,7 +57,7 @@ class AppCard extends StatelessWidget {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('Open App'),
+                        : const Text('アプリを開く'),
                   ),
                 ],
               ),

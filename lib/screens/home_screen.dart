@@ -52,17 +52,17 @@ class _HomeScreenState extends State<HomeScreen> {
             NavigationDestination(
               icon: Icon(Icons.people_alt_outlined),
               selectedIcon: Icon(Icons.people_alt),
-              label: 'Test',
+              label: 'テスト',
             ),
             NavigationDestination(
               icon: Icon(Icons.app_registration_outlined),
               selectedIcon: Icon(Icons.app_registration),
-              label: 'Register',
+              label: '登録',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),
               selectedIcon: Icon(Icons.person),
-              label: 'My Page',
+              label: 'マイページ',
             ),
           ],
         ),

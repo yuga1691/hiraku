@@ -40,11 +40,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return const Scaffold(
-        body: Center(child: Text('ユーザー情報を取得できません。')),
+        body: Center(child: Text('ユーザー認証に失敗しました。')),
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('Register')),
+      appBar: AppBar(title: const Text('登録')),
       body: StreamBuilder<AppModel?>(
         stream: _firestoreService.watchMyActiveApp(user.uid),
         builder: (context, snapshot) {
@@ -57,7 +57,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 const Text(
-                  '登録中のアプリ',
+                  '現在のアプリ',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
@@ -65,11 +65,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 16),
                 FilledButton(
                   onPressed: () => _endApp(myApp.id),
-                  child: const Text('テスト終了'),
+                  child: const Text('テストを終了'),
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  '現在は1つのアプリのみ登録可能です。テスト終了後に新しいアプリを登録してください。',
+                  '同時に登録できるアプリは1つだけです。別のアプリを登録するには、先にテストを終了してください。',
                 ),
               ],
             );
@@ -92,7 +92,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: _nameController,
           decoration: const InputDecoration(
-            labelText: 'アプリ名（必須）',
+            labelText: 'アプリ名（タイトル）',
             border: OutlineInputBorder(),
           ),
         ),
@@ -100,7 +100,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: _urlController,
           decoration: const InputDecoration(
-            labelText: 'Google Play URL（必須）',
+            labelText: 'Google Play URL',
             hintText: 'https://play.google.com/store/apps/details?id=...',
             border: OutlineInputBorder(),
           ),
@@ -139,7 +139,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         const SizedBox(height: 16),
         const EmptyState(
           title: '注意',
-          message: '登録できるアプリは常に1つだけです。テスト終了後に次の登録が可能になります。',
+          message:
+              '登録できるアプリは常に1つだけです。テスト終了後に次のアプリを登録してください。',
         ),
       ],
     );
@@ -162,7 +163,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
     final packageName = _extractPackageName(playUrl);
     if (packageName == null) {
-      _showSnack('Google Play URLからパッケージ名を抽出できません。');
+      _showSnack('Google Play URLからパッケージ名を取得できません。');
       return;
     }
     setState(() => _saving = true);

@@ -26,11 +26,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return const Scaffold(
-        body: Center(child: Text('ユーザー情報を取得できません。')),
+        body: Center(child: Text('ユーザー認証に失敗しました。')),
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('My Page')),
+      appBar: AppBar(title: const Text('マイページ')),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -66,11 +66,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 const SizedBox(height: 8),
                 Text('ユーザー名: ${username.isEmpty ? '未設定' : username}'),
                 const SizedBox(height: 4),
-                Text('相互テスト回数: $testedCount'),
+                Text('テスト参加回数: $testedCount'),
                 const SizedBox(height: 12),
                 FilledButton.tonal(
                   onPressed: () => _editUsername(userId, username),
-                  child: const Text('ユーザー名を変更'),
+                  child: const Text('ユーザー名を編集'),
                 ),
               ],
             ),
@@ -92,7 +92,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text('参加すると、テスト対象アプリのインストールが可能になります。'),
+            const Text('テストを行うにはチーム参加が必要です。'),
             const SizedBox(height: 8),
             Text(
               kTeamJoinUrl,
@@ -101,7 +101,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             const SizedBox(height: 8),
             FilledButton(
               onPressed: _openTeamUrl,
-              child: const Text('外部ブラウザで開く'),
+              child: const Text('招待リンクを開く'),
             ),
           ],
         ),
@@ -121,7 +121,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'My App',
+                  'マイアプリ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -145,7 +145,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Testing履歴',
+              'テスト履歴',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -162,7 +162,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 if (items.isEmpty) {
                   return const EmptyState(
                     title: '履歴がありません',
-                    message: '他人のアプリをOpenするとここに記録されます。',
+                    message: '他のアプリを開くとここに記録されます。',
                   );
                 }
                 return Column(
@@ -192,7 +192,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ユーザー名を変更'),
+        title: const Text('ユーザー名を編集'),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(labelText: 'ユーザー名'),
