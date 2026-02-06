@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../constants.dart';
@@ -145,6 +146,40 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               ),
             ),
             const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surface.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: theme.colorScheme.primary.withOpacity(0.3),
+                ),
+              ),
+              child: SelectableText(
+                kTeamJoinEmail,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: theme.colorScheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _copyTeamEmail,
+                  icon: const Icon(Icons.copy),
+                  label: const Text('Copy Email'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _openTeamEmail,
+                  icon: const Icon(Icons.email),
+                  label: const Text('Send Email'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
             FilledButton.icon(
               onPressed: _openTeamUrl,
               icon: const Icon(Icons.open_in_new),
@@ -272,6 +307,17 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _openTeamUrl() async {
     final uri = Uri.parse(kTeamJoinUrl);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _openTeamEmail() async {
+    final uri = Uri(scheme: 'mailto', path: kTeamJoinEmail);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _copyTeamEmail() async {
+    await Clipboard.setData(const ClipboardData(text: kTeamJoinEmail));
+    if (!mounted) return;
+    _showSnack('Copied Google Group email.');
   }
 
   void _showSnack(String message) {

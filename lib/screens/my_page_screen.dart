@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -97,6 +98,28 @@ class _MyPageScreenState extends State<MyPageScreen> {
             Text(
               kTeamJoinUrl,
               style: const TextStyle(color: Colors.blueGrey),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              kTeamJoinEmail,
+              style: const TextStyle(color: Colors.blueGrey),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _copyTeamEmail,
+                  icon: const Icon(Icons.copy),
+                  label: const Text('Copy Email'),
+                ),
+                OutlinedButton.icon(
+                  onPressed: _openTeamEmail,
+                  icon: const Icon(Icons.email),
+                  label: const Text('Send Email'),
+                ),
+              ],
             ),
             const SizedBox(height: 8),
             FilledButton(
@@ -216,5 +239,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _openTeamUrl() async {
     final uri = Uri.parse(kTeamJoinUrl);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _openTeamEmail() async {
+    final uri = Uri(scheme: 'mailto', path: kTeamJoinEmail);
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _copyTeamEmail() async {
+    await Clipboard.setData(const ClipboardData(text: kTeamJoinEmail));
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Copied Google Group email.')),
+    );
   }
 }

@@ -1,1 +1,2 @@
-const String kTeamJoinUrl = 'https://example.com/your-team-url';
+const String kTeamJoinUrl = 'https://groups.google.com/g/hiraku_app';
+const String kTeamJoinEmail = 'hiraku_app@googlegroups.com';
