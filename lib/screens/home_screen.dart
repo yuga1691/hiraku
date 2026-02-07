@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'my_page_screen.dart';
 import 'register_screen.dart';
 import 'test_screen.dart';
+import 'usage_guide_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -17,6 +18,7 @@ class _HomeScreenState extends State<HomeScreen> {
   final List<Widget> _pages = const [
     TestScreen(),
     RegisterScreen(),
+    UsageGuideScreen(),
     MyPageScreen(),
   ];
 
@@ -58,6 +60,11 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.app_registration_outlined),
               selectedIcon: Icon(Icons.app_registration),
               label: '登録',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.menu_book_outlined),
+              selectedIcon: Icon(Icons.menu_book),
+              label: '使い方',
             ),
             NavigationDestination(
               icon: Icon(Icons.person_outline),

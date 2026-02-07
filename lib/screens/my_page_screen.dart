@@ -9,6 +9,7 @@ import '../models/app_model.dart';
 import '../models/testing_model.dart';
 import '../services/firestore_service.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/help_sheet.dart';
 import '../widgets/my_app_card.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -22,6 +23,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final DateFormat _dateFormat = DateFormat('yyyy/MM/dd HH:mm');
 
+  static const _helpSections = [
+    UsageHelpSection(
+      title: 'プロフィールを更新',
+      body: '仮の説明文です。ユーザー名を変更できます。',
+      assetPath: 'assets/guide/placeholder.png',
+    ),
+    UsageHelpSection(
+      title: 'テスト履歴を確認',
+      body: '仮の説明文です。開いたアプリの履歴が表示されます。',
+      assetPath: 'assets/guide/placeholder.png',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -31,7 +45,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('マイページ')),
+      appBar: AppBar(
+        title: const Text('マイページ'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: '使い方を見る',
+            onPressed: () => showUsageHelpSheet(
+              context,
+              title: 'マイページの使い方',
+              sections: _helpSections,
+            ),
+          ),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -67,11 +94,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 const SizedBox(height: 8),
                 Text('ユーザー名: ${username.isEmpty ? '未設定' : username}'),
                 const SizedBox(height: 4),
-                Text('テスト参加回数: $testedCount'),
+                Text('テスト回数: $testedCount'),
                 const SizedBox(height: 12),
                 FilledButton.tonal(
                   onPressed: () => _editUsername(userId, username),
-                  child: const Text('ユーザー名を編集'),
+                  child: const Text('ユーザー名を変更'),
                 ),
               ],
             ),
@@ -93,7 +120,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text('テストを行うにはチーム参加が必要です。'),
+            const Text('テストに参加するにはチーム参加が必要です。'),
             const SizedBox(height: 8),
             Text(
               kTeamJoinUrl,
@@ -124,7 +151,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
             const SizedBox(height: 8),
             FilledButton(
               onPressed: _openTeamUrl,
-              child: const Text('招待リンクを開く'),
+              child: const Text('リンクを開く'),
             ),
           ],
         ),
@@ -185,7 +212,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 if (items.isEmpty) {
                   return const EmptyState(
                     title: '履歴がありません',
-                    message: '他のアプリを開くとここに記録されます。',
+                    message: 'テストしたアプリがここに表示されます。',
                   );
                 }
                 return Column(
@@ -215,7 +242,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('ユーザー名を編集'),
+        title: const Text('ユーザー名を変更'),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(labelText: 'ユーザー名'),

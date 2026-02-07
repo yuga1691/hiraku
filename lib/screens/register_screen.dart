@@ -8,6 +8,7 @@ import 'package:image_picker/image_picker.dart';
 import '../models/app_model.dart';
 import '../services/firestore_service.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/help_sheet.dart';
 import '../widgets/my_app_card.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -27,6 +28,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
   String? _iconBase64;
   bool _saving = false;
 
+  static const _helpSections = [
+    UsageHelpSection(
+      title: 'アプリ情報を入力',
+      body: '仮の説明文です。アプリ名とGoogle Play URLを入力します。',
+      assetPath: 'assets/guide/placeholder.png',
+    ),
+    UsageHelpSection(
+      title: 'アイコンを追加',
+      body: '仮の説明文です。ギャラリーからアイコン画像を選択します。',
+      assetPath: 'assets/guide/placeholder.png',
+    ),
+  ];
+
   @override
   void dispose() {
     _nameController.dispose();
@@ -44,7 +58,20 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('登録')),
+      appBar: AppBar(
+        title: const Text('登録'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: '使い方を見る',
+            onPressed: () => showUsageHelpSheet(
+              context,
+              title: '登録の使い方',
+              sections: _helpSections,
+            ),
+          ),
+        ],
+      ),
       body: StreamBuilder<AppModel?>(
         stream: _firestoreService.watchMyActiveApp(user.uid),
         builder: (context, snapshot) {
@@ -57,7 +84,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               padding: const EdgeInsets.all(16),
               children: [
                 const Text(
-                  '現在のアプリ',
+                  '現在登録中のアプリ',
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 12),
@@ -69,7 +96,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  '同時に登録できるアプリは1つだけです。別のアプリを登録するには、先にテストを終了してください。',
+                  '次のアプリを登録するには、現在のテストを終了してください。',
                 ),
               ],
             );
@@ -92,7 +119,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: _nameController,
           decoration: const InputDecoration(
-            labelText: 'アプリ名（タイトル）',
+            labelText: 'アプリ名',
             border: OutlineInputBorder(),
           ),
         ),
@@ -109,7 +136,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: _messageController,
           decoration: const InputDecoration(
-            labelText: '一言コメント（任意）',
+            labelText: 'コメント（任意）',
             border: OutlineInputBorder(),
           ),
           maxLines: 2,
@@ -138,9 +165,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ),
         const SizedBox(height: 16),
         const EmptyState(
-          title: '注意',
-          message:
-              '登録できるアプリは常に1つだけです。テスト終了後に次のアプリを登録してください。',
+          title: 'ポイント',
+          message: '登録できるアプリは同時に1つまでです。',
         ),
       ],
     );

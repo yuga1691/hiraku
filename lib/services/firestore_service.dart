@@ -1,4 +1,4 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
+﻿import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
@@ -48,17 +48,14 @@ class FirestoreService {
     });
   }
 
-  Stream<List<AppModel>> watchAvailableApps(String userId) {
+  Stream<List<AppModel>> watchAvailableApps() {
     return _apps
         .where('isActive', isEqualTo: true)
-        .where('remainingExposure', isGreaterThan: 0)
-        .where('ownerUserId', isNotEqualTo: userId)
-        .orderBy('ownerUserId')
-        .orderBy('createdAt', descending: true)
         .snapshots()
         .map(
           (snapshot) => snapshot.docs
               .map((doc) => AppModel.fromMap(doc.id, doc.data()))
+              .where((app) => app.remainingExposure > 0)
               .toList(),
         );
   }
@@ -148,6 +145,10 @@ class FirestoreService {
         throw Exception('このアプリは現在テスト対象外です。');
       }
 
+      final historySnap = await tx.get(historyRef);
+      final prevCount = historySnap.exists
+          ? (historySnap.data()!['openCountByMe'] ?? 0) as int
+          : 0;
       tx.update(targetRef, {
         'openedCount': FieldValue.increment(1),
         'remainingExposure': FieldValue.increment(-1),
@@ -165,10 +166,6 @@ class FirestoreService {
         });
       }
 
-      final historySnap = await tx.get(historyRef);
-      final prevCount = historySnap.exists
-          ? (historySnap.data()!['openCountByMe'] ?? 0) as int
-          : 0;
       tx.set(historyRef, {
         'appId': targetApp.id,
         'name': targetApp.name,

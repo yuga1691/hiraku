@@ -1,11 +1,13 @@
-import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../models/app_model.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
+import '../widgets/help_sheet.dart';
 
 class TestScreen extends StatefulWidget {
   const TestScreen({super.key});
@@ -19,6 +21,19 @@ class _TestScreenState extends State<TestScreen> {
   final LauncherService _launcherService = LauncherService();
   final Set<String> _loadingAppIds = {};
 
+  static const _helpSections = [
+    UsageHelpSection(
+      title: 'テストするアプリを選ぶ',
+      body: '仮の説明文です。一覧からアプリを選んで詳細を確認します。',
+      assetPath: 'assets/guide/placeholder.png',
+    ),
+    UsageHelpSection(
+      title: 'アプリを開く',
+      body: '仮の説明文です。開くボタンを押すとストアが開きます。',
+      assetPath: 'assets/guide/placeholder.png',
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -28,36 +43,124 @@ class _TestScreenState extends State<TestScreen> {
       );
     }
     return Scaffold(
-      appBar: AppBar(title: const Text('テスト')),
+      appBar: AppBar(
+        title: const Text('テスト'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.help_outline),
+            tooltip: '使い方を見る',
+            onPressed: () => showUsageHelpSheet(
+              context,
+              title: 'テストの使い方',
+              sections: _helpSections,
+            ),
+          ),
+        ],
+      ),
       body: StreamBuilder<List<AppModel>>(
-        stream: _firestoreService.watchAvailableApps(user.uid),
+        stream: _firestoreService.watchAvailableApps(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
+          if (snapshot.hasError) {
+            return EmptyState(
+              title: 'テスト一覧を読み込めません',
+              message: '読み込み中にエラーが発生しました: ${snapshot.error}',
+            );
+          }
           final apps = snapshot.data ?? [];
           if (apps.isEmpty) {
             return const EmptyState(
-              title: '利用できるアプリがありません',
-              message: '他のユーザーが登録したアプリが表示されます。しばらくお待ちください。',
+              title: 'テストできるアプリがありません',
+              message: '他のユーザーが登録したアプリが表示されます。',
+            );
+          }
+          final visibleApps =
+              apps.where((app) => app.ownerUserId != user.uid).toList();
+          if (visibleApps.isEmpty) {
+            return const EmptyState(
+              title: 'テストできるアプリがありません',
+              message: '他のユーザーが登録したアプリが表示されます。',
             );
           }
           return ListView.separated(
             padding: const EdgeInsets.all(16),
-            itemCount: apps.length,
+            itemCount: visibleApps.length,
             separatorBuilder: (_, __) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final app = apps[index];
+              final app = visibleApps[index];
               final loading = _loadingAppIds.contains(app.id);
               return AppCard(
                 app: app,
                 loading: loading,
-                onOpen: () => _openApp(user.uid, app),
+                onOpen: () => _showAppDetails(user.uid, app),
               );
             },
           );
         },
       ),
+    );
+  }
+
+  Future<void> _showAppDetails(String userId, AppModel app) async {
+    if (!mounted) return;
+    await showDialog<void>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(app.name),
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('URL'),
+                const SizedBox(height: 4),
+                SelectableText(app.playUrl),
+                const SizedBox(height: 12),
+                const Text('コメント'),
+                const SizedBox(height: 4),
+                SelectableText(app.message.isEmpty ? '（コメントなし）' : app.message),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('閉じる'),
+            ),
+            TextButton(
+              onPressed: () async {
+                final opened = await _launcherService.openWebUrl(
+                  packageName: app.packageName,
+                  playUrl: app.playUrl,
+                );
+                if (!opened && mounted) {
+                  _showSnack('URLを開けませんでした。');
+                }
+              },
+              child: const Text('URLを開く'),
+            ),
+            TextButton(
+              onPressed: () async {
+                await Clipboard.setData(ClipboardData(text: app.playUrl));
+                if (mounted) {
+                  _showSnack('URLをコピーしました。');
+                }
+              },
+              child: const Text('URLをコピー'),
+            ),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _openApp(userId, app);
+              },
+              child: const Text('ストアを開く'),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -68,7 +171,13 @@ class _TestScreenState extends State<TestScreen> {
         currentUserId: userId,
         targetApp: app,
       );
-      await _launcherService.openPlayStore(app.packageName);
+      final opened = await _launcherService.openPlayStore(
+        packageName: app.packageName,
+        playUrl: app.playUrl,
+      );
+      if (!opened) {
+        _showSnack('ストアを開けませんでした。URLを確認してください。');
+      }
     } catch (e) {
       _showSnack('起動に失敗しました: $e');
     } finally {
