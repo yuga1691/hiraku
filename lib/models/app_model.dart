@@ -10,6 +10,7 @@ class AppModel {
     required this.isActive,
     required this.remainingExposure,
     required this.openedCount,
+    required this.openCountByDate,
     required this.createdAt,
     required this.endedAt,
   });
@@ -24,6 +25,7 @@ class AppModel {
   final bool isActive;
   final int remainingExposure;
   final int openedCount;
+  final Map<String, int> openCountByDate;
   final DateTime? createdAt;
   final DateTime? endedAt;
 
@@ -39,9 +41,18 @@ class AppModel {
       isActive: (data['isActive'] ?? false) as bool,
       remainingExposure: (data['remainingExposure'] ?? 0) as int,
       openedCount: (data['openedCount'] ?? 0) as int,
+      openCountByDate: _parseCountByDate(data['openCountByDate']),
       createdAt: (data['createdAt'] as dynamic)?.toDate(),
       endedAt: (data['endedAt'] as dynamic)?.toDate(),
     );
+  }
+
+  static Map<String, int> _parseCountByDate(dynamic raw) {
+    if (raw is! Map) return {};
+    return raw.map((key, value) {
+      final count = (value ?? 0) as int;
+      return MapEntry(key.toString(), count);
+    });
   }
 
   Map<String, dynamic> toMap() {
@@ -55,6 +66,7 @@ class AppModel {
       'isActive': isActive,
       'remainingExposure': remainingExposure,
       'openedCount': openedCount,
+      'openCountByDate': openCountByDate,
       'createdAt': createdAt,
       'endedAt': endedAt,
     };

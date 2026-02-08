@@ -42,6 +42,29 @@ class LauncherService {
     );
   }
 
+  Future<bool> openInstalledOrStore({
+    required String packageName,
+    String? playUrl,
+  }) async {
+    if (packageName.isNotEmpty) {
+      final appUri = Uri.parse('android-app://$packageName');
+      if (await canLaunchUrl(appUri)) {
+        final openedApp = await launchUrl(
+          appUri,
+          mode: LaunchMode.externalApplication,
+        );
+        if (openedApp) {
+          return true;
+        }
+      }
+    }
+
+    return openPlayStore(
+      packageName: packageName,
+      playUrl: playUrl,
+    );
+  }
+
   Future<bool> openWebUrl({
     required String packageName,
     String? playUrl,

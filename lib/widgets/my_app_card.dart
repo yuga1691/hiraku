@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
@@ -11,6 +11,8 @@ class MyAppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dailyEntries = app.openCountByDate.entries.toList()
+      ..sort((a, b) => b.key.compareTo(a.key));
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -42,6 +44,16 @@ class MyAppCard extends StatelessWidget {
               const SizedBox(height: 8),
               Text('残り露出回数: ${app.remainingExposure}'),
               Text('Open回数: ${app.openedCount}'),
+              if (dailyEntries.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                const Text('Open回数（日別）'),
+                const SizedBox(height: 4),
+                ...dailyEntries.map(
+                  (entry) => Text(
+                    '${entry.key.replaceAll('-', '/')}  ${entry.value}回',
+                  ),
+                ),
+              ],
             ],
           ),
         ),

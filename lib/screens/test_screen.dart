@@ -59,42 +59,53 @@ class _TestScreenState extends State<TestScreen> {
       ),
       body: StreamBuilder<List<AppModel>>(
         stream: _firestoreService.watchAvailableApps(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          if (snapshot.hasError) {
-            return EmptyState(
-              title: 'テスト一覧を読み込めません',
-              message: '読み込み中にエラーが発生しました: ${snapshot.error}',
-            );
-          }
-          final apps = snapshot.data ?? [];
-          if (apps.isEmpty) {
-            return const EmptyState(
-              title: 'テストできるアプリがありません',
-              message: '他のユーザーが登録したアプリが表示されます。',
-            );
-          }
-          final visibleApps =
-              apps.where((app) => app.ownerUserId != user.uid).toList();
-          if (visibleApps.isEmpty) {
-            return const EmptyState(
-              title: 'テストできるアプリがありません',
-              message: '他のユーザーが登録したアプリが表示されます。',
-            );
-          }
-          return ListView.separated(
-            padding: const EdgeInsets.all(16),
-            itemCount: visibleApps.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final app = visibleApps[index];
-              final loading = _loadingAppIds.contains(app.id);
-              return AppCard(
-                app: app,
-                loading: loading,
-                onOpen: () => _showAppDetails(user.uid, app),
+        builder: (context, appsSnapshot) {
+          return StreamBuilder(
+            stream: _firestoreService.watchTestingHistory(user.uid),
+            builder: (context, historySnapshot) {
+              if (appsSnapshot.connectionState == ConnectionState.waiting ||
+                  historySnapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (appsSnapshot.hasError) {
+                return EmptyState(
+                  title: 'テスト一覧を読み込めません',
+                  message: '読み込み中にエラーが発生しました: ${appsSnapshot.error}',
+                );
+              }
+              if (historySnapshot.hasError) {
+                return EmptyState(
+                  title: 'テスト履歴を読み込めません',
+                  message: '読み込み中にエラーが発生しました: ${historySnapshot.error}',
+                );
+              }
+              final apps = appsSnapshot.data ?? [];
+              final testedIds = (historySnapshot.data ?? [])
+                  .map((item) => item.appId)
+                  .toSet();
+              final visibleApps = apps
+                  .where((app) => app.ownerUserId != user.uid)
+                  .where((app) => !testedIds.contains(app.id))
+                  .toList();
+              if (visibleApps.isEmpty) {
+                return const EmptyState(
+                  title: 'テストできるアプリがありません',
+                  message: '他のユーザーが登録したアプリが表示されます。',
+                );
+              }
+              return ListView.separated(
+                padding: const EdgeInsets.all(16),
+                itemCount: visibleApps.length,
+                separatorBuilder: (_, __) => const SizedBox(height: 12),
+                itemBuilder: (context, index) {
+                  final app = visibleApps[index];
+                  final loading = _loadingAppIds.contains(app.id);
+                  return AppCard(
+                    app: app,
+                    loading: loading,
+                    onOpen: () => _showAppDetails(user.uid, app),
+                  );
+                },
               );
             },
           );

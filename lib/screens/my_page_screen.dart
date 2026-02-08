@@ -8,6 +8,7 @@ import '../constants.dart';
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
 import '../services/firestore_service.dart';
+import '../services/launcher_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/help_sheet.dart';
 import '../widgets/my_app_card.dart';
@@ -21,6 +22,7 @@ class MyPageScreen extends StatefulWidget {
 
 class _MyPageScreenState extends State<MyPageScreen> {
   final FirestoreService _firestoreService = FirestoreService();
+  final LauncherService _launcherService = LauncherService();
   final DateFormat _dateFormat = DateFormat('yyyy/MM/dd HH:mm');
 
   static const _helpSections = [
@@ -225,6 +227,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                             'Open回数: ${item.openCountByMe}'
                             '${item.lastOpenedAt == null ? '' : ' / 最終: ${_dateFormat.format(item.lastOpenedAt!)}'}',
                           ),
+                          onTap: () => _openTestedApp(item),
+                          trailing: FilledButton.tonal(
+                            onPressed: () => _openTestedApp(item),
+                            child: const Text('開く'),
+                          ),
                         ),
                       )
                       .toList(),
@@ -235,6 +242,33 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _openTestedApp(TestingModel item) async {
+    if (item.playUrl.isEmpty && item.packageName.isEmpty) {
+      _showSnack('URLが設定されていません。');
+      return;
+    }
+    try {
+      await _firestoreService.openTestedAppTransaction(
+        currentUserId: FirebaseAuth.instance.currentUser!.uid,
+        history: item,
+      );
+      final opened = item.packageName.isEmpty
+          ? await _launcherService.openWebUrl(
+              packageName: item.packageName,
+              playUrl: item.playUrl,
+            )
+          : await _launcherService.openInstalledOrStore(
+              packageName: item.packageName,
+              playUrl: item.playUrl,
+            );
+      if (!opened) {
+        _showSnack('ストアを開けませんでした。URLを確認してください。');
+      }
+    } catch (e) {
+      _showSnack('起動に失敗しました: $e');
+    }
   }
 
   Future<void> _editUsername(String userId, String current) async {
@@ -278,6 +312,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Copied Google Group email.')),
+    );
+  }
+
+  void _showSnack(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
     );
   }
 }

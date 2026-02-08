@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 import '../widgets/help_sheet.dart';
 
@@ -7,18 +7,27 @@ class UsageGuideScreen extends StatelessWidget {
 
   static const _sections = [
     UsageHelpSection(
-      title: 'STEP 1: テスターを探す',
-      body: '仮の説明文です。アプリを開いてテスト一覧から気になるアプリを選びます。',
+      title: 'STEP 1: Googleグループに参加',
+      body:
+          '運用チームが案内するGoogleグループに参加してください。参加後は、メールの案内に従って設定を確認します。',
       assetPath: 'assets/guide/placeholder.png',
     ),
     UsageHelpSection(
-      title: 'STEP 2: アプリを登録する',
-      body: '仮の説明文です。自分のアプリを登録してテスターに見てもらいます。',
+      title: 'STEP 2: アプリを登録',
+      body:
+          'アプリのURLとテスト用の情報を登録します。案内メールの手順に沿って、入力と登録を完了してください。',
       assetPath: 'assets/guide/placeholder.png',
     ),
     UsageHelpSection(
-      title: 'STEP 3: マイページで履歴を見る',
-      body: '仮の説明文です。テスト履歴や登録状況を確認します。',
+      title: 'STEP 3: 14日間アプリを起動',
+      body:
+          'クローズドテストの期間中は、毎日アプリを起動してください。運用チームからの連絡がある場合は、指示に従って対応してください。',
+      assetPath: 'assets/guide/placeholder.png',
+    ),
+    UsageHelpSection(
+      title: '注意事項',
+      body:
+          '運用チームからの連絡やテスター向けの指示は必ず確認してください。テスト期間中はアプリを削除しないようにお願いします。',
       assetPath: 'assets/guide/placeholder.png',
     ),
   ];
@@ -32,10 +41,10 @@ class UsageGuideScreen extends StatelessWidget {
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
-            tooltip: '使い方を見る',
+            tooltip: '使い方を開く',
             onPressed: () => showUsageHelpSheet(
               context,
-              title: '使い方（全体）',
+              title: '使い方のガイド',
               sections: _sections,
             ),
           ),
@@ -59,8 +68,9 @@ class UsageGuideScreen extends StatelessWidget {
                 Text('HIRAKU の使い方', style: theme.textTheme.titleLarge),
                 const SizedBox(height: 8),
                 Text(
-                  'ここではアプリの使い方をまとめています。内容は仮の文章なので、後で編集してください。',
+                  'この画面ではアプリの基本的な使い方をご案内します。詳細は運用チームからの案内をご確認ください。',
                   style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                     color: theme.colorScheme.onSurface.withOpacity(0.8),
                   ),
                 ),
@@ -112,6 +122,7 @@ class _GuideCard extends StatelessWidget {
               Text(
                 section.body,
                 style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
                   color: theme.colorScheme.onSurface.withOpacity(0.8),
                 ),
               ),

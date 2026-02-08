@@ -1,4 +1,4 @@
-import 'package:firebase_core/firebase_core.dart';
+﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
@@ -34,21 +34,37 @@ class HirakuApp extends StatelessWidget {
       error: Color(0xFFFF6B6B),
     );
     final baseTextTheme = ThemeData.dark().textTheme.apply(
-          fontFamily: 'RobotoMono',
+          fontFamily: 'NotoSansJP',
           bodyColor: onBackground,
           displayColor: onBackground,
         );
+    final weightedTextTheme = baseTextTheme.copyWith(
+      bodyLarge: baseTextTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+      bodyMedium:
+          baseTextTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+      bodySmall: baseTextTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+      labelLarge:
+          baseTextTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
+      labelMedium:
+          baseTextTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
+      labelSmall:
+          baseTextTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
+      titleMedium:
+          baseTextTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+      titleSmall:
+          baseTextTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+    );
     return MaterialApp(
       title: 'hiraku',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
-        textTheme: baseTextTheme.copyWith(
-          headlineMedium: baseTextTheme.headlineMedium?.copyWith(
+        textTheme: weightedTextTheme.copyWith(
+          headlineMedium: weightedTextTheme.headlineMedium?.copyWith(
             fontWeight: FontWeight.w700,
             letterSpacing: 1.2,
           ),
-          titleLarge: baseTextTheme.titleLarge?.copyWith(
+          titleLarge: weightedTextTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
             letterSpacing: 0.8,
           ),
@@ -64,8 +80,9 @@ class HirakuApp extends StatelessWidget {
           backgroundColor: surface.withOpacity(0.9),
           indicatorColor: primary.withOpacity(0.2),
           labelTextStyle: WidgetStateProperty.all(
-            baseTextTheme.labelSmall?.copyWith(
+            weightedTextTheme.labelSmall?.copyWith(
               color: onSurface,
+              fontWeight: FontWeight.w700,
               letterSpacing: 0.6,
             ),
           ),
@@ -156,7 +173,7 @@ class _RootGateState extends State<RootGate> {
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
-              child: Text('初期化に失敗しました: ${snapshot.error}'),
+              child: Text('初期化中にエラーが発生しました: ${snapshot.error}'),
             ),
           );
         }

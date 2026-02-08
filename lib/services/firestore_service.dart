@@ -87,6 +87,7 @@ class FirestoreService {
       'isActive': true,
       'remainingExposure': 10,
       'openedCount': 0,
+      'openCountByDate': <String, int>{},
       'createdAt': FieldValue.serverTimestamp(),
       'endedAt': null,
     });
@@ -121,6 +122,7 @@ class FirestoreService {
   }) async {
     final targetRef = _apps.doc(targetApp.id);
     final userRef = _users.doc(currentUserId);
+    final dateKey = DateTime.now().toLocal().toIso8601String().substring(0, 10);
 
     final myActiveAppSnapshot = await _apps
         .where('ownerUserId', isEqualTo: currentUserId)
@@ -141,17 +143,18 @@ class FirestoreService {
       final data = targetSnap.data()!;
       final isActive = (data['isActive'] ?? false) as bool;
       final remaining = (data['remainingExposure'] ?? 0) as int;
-      if (!isActive || remaining <= 0) {
-        throw Exception('このアプリは現在テスト対象外です。');
-      }
-
       final historySnap = await tx.get(historyRef);
       final prevCount = historySnap.exists
           ? (historySnap.data()!['openCountByMe'] ?? 0) as int
           : 0;
+      final isFirstOpenByUser = !historySnap.exists;
+      if (isFirstOpenByUser && (!isActive || remaining <= 0)) {
+        throw Exception('このアプリは現在テスト対象外です。');
+      }
       tx.update(targetRef, {
         'openedCount': FieldValue.increment(1),
-        'remainingExposure': FieldValue.increment(-1),
+        'openCountByDate.$dateKey': FieldValue.increment(1),
+        if (isFirstOpenByUser) 'remainingExposure': FieldValue.increment(-1),
       });
 
       tx.set(
@@ -169,6 +172,75 @@ class FirestoreService {
       tx.set(historyRef, {
         'appId': targetApp.id,
         'name': targetApp.name,
+        'playUrl': targetApp.playUrl,
+        'packageName': targetApp.packageName,
+        'openCountByMe': prevCount + 1,
+        'lastOpenedAt': FieldValue.serverTimestamp(),
+      });
+    });
+  }
+
+  Future<void> openTestedAppTransaction({
+    required String currentUserId,
+    required TestingModel history,
+  }) async {
+    final targetRef = _apps.doc(history.appId);
+    final userRef = _users.doc(currentUserId);
+    final dateKey = DateTime.now().toLocal().toIso8601String().substring(0, 10);
+
+    final myActiveAppSnapshot = await _apps
+        .where('ownerUserId', isEqualTo: currentUserId)
+        .where('isActive', isEqualTo: true)
+        .limit(1)
+        .get();
+    final myActiveAppRef = myActiveAppSnapshot.docs.isEmpty
+        ? null
+        : myActiveAppSnapshot.docs.first.reference;
+
+    final historyRef =
+        _users.doc(currentUserId).collection('testing').doc(history.appId);
+
+    await _db.runTransaction((tx) async {
+      final targetSnap = await tx.get(targetRef);
+      if (!targetSnap.exists) {
+        throw Exception('対象のアプリが見つかりません。');
+      }
+      final data = targetSnap.data()!;
+      final isActive = (data['isActive'] ?? false) as bool;
+      final remaining = (data['remainingExposure'] ?? 0) as int;
+
+      final historySnap = await tx.get(historyRef);
+      final prevCount = historySnap.exists
+          ? (historySnap.data()!['openCountByMe'] ?? 0) as int
+          : 0;
+      final isFirstOpenByUser = !historySnap.exists;
+      if (isFirstOpenByUser && (!isActive || remaining <= 0)) {
+        throw Exception('このアプリは現在テスト対象外です。');
+      }
+
+      tx.update(targetRef, {
+        'openedCount': FieldValue.increment(1),
+        'openCountByDate.$dateKey': FieldValue.increment(1),
+        if (isFirstOpenByUser) 'remainingExposure': FieldValue.increment(-1),
+      });
+
+      tx.set(
+        userRef,
+        {'testedCountTotal': FieldValue.increment(1)},
+        SetOptions(merge: true),
+      );
+
+      if (myActiveAppRef != null) {
+        tx.update(myActiveAppRef, {
+          'remainingExposure': FieldValue.increment(1),
+        });
+      }
+
+      tx.set(historyRef, {
+        'appId': history.appId,
+        'name': history.name,
+        'playUrl': history.playUrl,
+        'packageName': history.packageName,
         'openCountByMe': prevCount + 1,
         'lastOpenedAt': FieldValue.serverTimestamp(),
       });

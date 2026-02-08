@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 
 class UsageHelpSection {
   const UsageHelpSection({
@@ -48,8 +48,9 @@ class _HelpSheetContent extends StatelessWidget {
             Text(title, style: theme.textTheme.titleLarge),
             const SizedBox(height: 8),
             Text(
-              '知りたい項目をタップすると詳細が開きます。',
+              '各手順の詳細を確認するには、項目をタップしてください。',
               style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
                 color: theme.colorScheme.onSurface.withOpacity(0.75),
               ),
             ),
@@ -125,6 +126,7 @@ class _HelpExpansionTileState extends State<_HelpExpansionTile> {
           Text(
             section.body,
             style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
               color: theme.colorScheme.onSurface.withOpacity(0.8),
             ),
           ),
