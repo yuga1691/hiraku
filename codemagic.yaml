@@ -14,18 +14,19 @@ workflows:
       # 1) keystore を /tmp に復元（base64 から戻す）
       - name: Restore keystore
         script: |
-          echo $CM_KEYSTORE_B64 | base64 --decode > /tmp/hiraku-keystore.jks
+          echo "$CM_KEYSTORE_B64" | base64 --decode > /tmp/hiraku-keystore.jks
           ls -l /tmp/hiraku-keystore.jks
 
-      # 2) android/key.properties を生成
+      # 2) android/key.properties を生成（Gradleが読む場所）
       - name: Create android/key.properties
         script: |
           cat > android/key.properties << EOF
           storePassword=$CM_KEYSTORE_PASSWORD
           keyPassword=$CM_KEY_PASSWORD
           keyAlias=$KEY_ALIAS
-          storeFile=$CM_KEYSTORE_PATH
+          storeFile=/tmp/hiraku-keystore.jks
           EOF
+          sed -E 's/(storePassword|keyPassword)=.*/\1=*** /' android/key.properties
 
       - name: Build AAB (release)
         script: flutter build appbundle --release
