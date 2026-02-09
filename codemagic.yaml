@@ -15,9 +15,16 @@ workflows:
         script: |
           set -e
           printf "%s" "$CM_KEYSTORE_B64" | base64 --decode > /tmp/hiraku-keystore.jks
+          echo "Keystore restored:"
           ls -l /tmp/hiraku-keystore.jks
 
-      - name: Create key.properties (android)
+      - name: Verify keystore (readable + alias)
+        script: |
+          set -e
+          echo "Verifying keystore readability..."
+          keytool -list -keystore /tmp/hiraku-keystore.jks -storepass "$CM_KEYSTORE_PASSWORD" | head -n 50
+
+      - name: Create key.properties (android + root)
         script: |
           set -e
 
@@ -25,25 +32,37 @@ workflows:
           SP="$(printf "%s" "$CM_KEYSTORE_PASSWORD" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
           KP="$(printf "%s" "$CM_KEY_PASSWORD"        | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
 
-          cat > android/key.properties << EOF
+          for f in android/key.properties key.properties; do
+            cat > "$f" << EOF
 storePassword=$SP
 keyPassword=$KP
 keyAlias=$KEY_ALIAS
 storeFile=/tmp/hiraku-keystore.jks
 EOF
+            echo "Created $f"
+            grep -nE '^storePassword=.+$' "$f"
+            grep -nE '^keyPassword=.+$' "$f"
+            sed -E 's/(storePassword|keyPassword)=.*/\1=***/' "$f"
+            ls -l "$f"
+          done
 
-          # Validate: ensure not empty (do NOT print values)
-          grep -nE '^storePassword=.+$' android/key.properties
-          grep -nE '^keyPassword=.+$' android/key.properties
-
-          # Masked preview + file exists
-          sed -E 's/(storePassword|keyPassword)=.*/\1=***/' android/key.properties
-          ls -l android/key.properties
+      - name: Gradle signingReport
+        script: |
+          set -e
+          cd android
+          ./gradlew :app:signingReport
 
       - name: Build AAB (release)
         script: |
           set -e
           flutter build appbundle --release
+
+      - name: Verify AAB certificate (built artifact)
+        script: |
+          set -e
+          echo "Verifying built AAB certificate..."
+          ls -l build/app/outputs/bundle/release/app-release.aab
+          keytool -printcert -jarfile build/app/outputs/bundle/release/app-release.aab | sed -n '1,35p'
 
     artifacts:
       - build/app/outputs/bundle/release/app-release.aab
