@@ -4,8 +4,8 @@ workflows:
 
     environment:
       flutter: stable
-      vars:
-        KEY_ALIAS: hiraku
+      groups:
+        - android_signing
 
     scripts:
       - name: Flutter pub get
