@@ -40,8 +40,9 @@ workflows:
               "$SP" "$KP" "$KEY_ALIAS" "/tmp/hiraku-keystore.jks" > "$f"
 
             echo "Created $f"
-            grep -nE '^storePassword=.+$' "$f"
-            grep -nE '^keyPassword=.+$' "$f"
+            grep -q '^storePassword=.' "$f" || { echo "ERROR: storePassword empty"; exit 1; }
+            grep -q '^keyPassword=.'   "$f" || { echo "ERROR: keyPassword empty"; exit 1; }
+
             sed -E 's/(storePassword|keyPassword)=.*/\1=***/' "$f"
             ls -l "$f"
           done
