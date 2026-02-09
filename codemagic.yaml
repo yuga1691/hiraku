@@ -14,8 +14,9 @@ workflows:
       # 1) keystore を /tmp に復元（base64 から戻す）
       - name: Restore keystore
         script: |
-          echo "$CM_KEYSTORE_B64" | base64 --decode > /tmp/hiraku-keystore.jks
+          printf "%s" "$CM_KEYSTORE_B64" | base64 --decode > /tmp/hiraku-keystore.jks
           ls -l /tmp/hiraku-keystore.jks
+
 
       # 2) android/key.properties を生成（Gradleが読む場所）
       - name: Create android/key.properties
