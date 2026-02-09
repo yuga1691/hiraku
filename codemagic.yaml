@@ -1,7 +1,7 @@
 workflows:
   android-release:
     name: Android Release AAB
-    instance_type: linux
+    
     environment:
       vars:
         KEY_ALIAS: hiraku
