@@ -9,7 +9,9 @@ workflows:
 
     scripts:
       - name: Flutter pub get
-        script: flutter pub get
+        script: |
+          set -e
+          flutter pub get
 
       - name: Restore keystore
         script: |
@@ -33,12 +35,10 @@ workflows:
           KP="$(printf "%s" "$CM_KEY_PASSWORD"        | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
 
           for f in android/key.properties key.properties; do
-            cat > "$f" << EOF
-storePassword=$SP
-keyPassword=$KP
-keyAlias=$KEY_ALIAS
-storeFile=/tmp/hiraku-keystore.jks
-EOF
+            mkdir -p "$(dirname "$f")" || true
+            printf "storePassword=%s\nkeyPassword=%s\nkeyAlias=%s\nstoreFile=%s\n" \
+              "$SP" "$KP" "$KEY_ALIAS" "/tmp/hiraku-keystore.jks" > "$f"
+
             echo "Created $f"
             grep -nE '^storePassword=.+$' "$f"
             grep -nE '^keyPassword=.+$' "$f"
