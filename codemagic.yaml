@@ -18,16 +18,17 @@ workflows:
           ls -l /tmp/hiraku-keystore.jks
 
 
-      # 2) android/key.properties を生成（Gradleが読む場所）
-      - name: Create android/key.properties
+      # 2) key.properties を生成（Gradleが読む場所：プロジェクト直下）
+      - name: Create key.properties
         script: |
-          cat > android/key.properties << EOF
+          cat > key.properties << EOF
           storePassword=$CM_KEYSTORE_PASSWORD
           keyPassword=$CM_KEY_PASSWORD
           keyAlias=$KEY_ALIAS
           storeFile=/tmp/hiraku-keystore.jks
           EOF
-          sed -E 's/(storePassword|keyPassword)=.*/\1=*** /' android/key.properties
+          sed -E 's/(storePassword|keyPassword)=.*/\1=*** /' key.properties
+          ls -l key.properties
 
       - name: Build AAB (release)
         script: flutter build appbundle --release
