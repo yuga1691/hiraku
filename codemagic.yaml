@@ -11,14 +11,12 @@ workflows:
       - name: Flutter pub get
         script: flutter pub get
 
-      # 1) keystore を /tmp に復元（base64 から戻す）
       - name: Restore keystore
         script: |
           set -e
           printf "%s" "$CM_KEYSTORE_B64" | base64 --decode > /tmp/hiraku-keystore.jks
           ls -l /tmp/hiraku-keystore.jks
 
-      # 2) key.properties を生成（Gradleが読む場所：プロジェクト直下）
       - name: Create key.properties (root)
         script: |
           set -e
@@ -32,7 +30,6 @@ EOF
           sed -E 's/(storePassword|keyPassword)=.*/\1=*** /' key.properties
           ls -l key.properties
 
-      # 3) Release AAB をビルド
       - name: Build AAB (release)
         script: |
           set -e
