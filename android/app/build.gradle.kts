@@ -3,7 +3,6 @@ import java.util.Properties
 plugins {
     id("com.android.application")
     id("kotlin-android")
-    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
 }
@@ -33,21 +32,29 @@ android {
     // --- release signing (keystore) ---
     val keystoreProperties = Properties()
     val keystorePropertiesFile = rootProject.file("key.properties")
-    if (keystorePropertiesFile.exists()) {
+    val hasKeystoreProps = keystorePropertiesFile.exists()
+
+    if (hasKeystoreProps) {
         keystoreProperties.load(keystorePropertiesFile.inputStream())
     }
 
     signingConfigs {
-        create("release") {
-            keyAlias = keystoreProperties["keyAlias"] as String
-            keyPassword = keystoreProperties["keyPassword"] as String
-            storeFile = file(keystoreProperties["storeFile"] as String)
-            storePassword = keystoreProperties["storePassword"] as String
+        if (hasKeystoreProps) {
+            create("release") {
+                keyAlias = keystoreProperties["keyAlias"] as String
+                keyPassword = keystoreProperties["keyPassword"] as String
+                storeFile = file(keystoreProperties["storeFile"] as String)
+                storePassword = keystoreProperties["storePassword"] as String
+            }
         }
     }
 
     buildTypes {
         release {
+            // key.properties が無いなら、release 署名できないのでビルドを止める
+            if (!hasKeystoreProps) {
+                throw GradleException("Missing key.properties at project root. Release builds must be signed.")
+            }
             signingConfig = signingConfigs.getByName("release")
         }
     }
