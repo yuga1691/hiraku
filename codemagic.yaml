@@ -20,15 +20,24 @@ workflows:
       - name: Create key.properties (android)
         script: |
           set -e
-          cat > android/key.properties << EOF
-storePassword="$CM_KEYSTORE_PASSWORD"
-keyPassword="$CM_KEY_PASSWORD"
-keyAlias="$KEY_ALIAS"
-storeFile="/tmp/hiraku-keystore.jks"
-EOF
-          # 確認（秘寁E�E出さなぁE��E
-          sed -E 's/(storePassword|keyPassword)=.*/\1=*** /' android/key.properties
 
+          # Trim CR and leading/trailing spaces (do NOT print secrets)
+          SP="$(printf "%s" "$CM_KEYSTORE_PASSWORD" | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+          KP="$(printf "%s" "$CM_KEY_PASSWORD"        | tr -d '\r' | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//')"
+
+          cat > android/key.properties << EOF
+storePassword=$SP
+keyPassword=$KP
+keyAlias=$KEY_ALIAS
+storeFile=/tmp/hiraku-keystore.jks
+EOF
+
+          # Validate: ensure not empty (do NOT print values)
+          grep -nE '^storePassword=.+$' android/key.properties
+          grep -nE '^keyPassword=.+$' android/key.properties
+
+          # Masked preview + file exists
+          sed -E 's/(storePassword|keyPassword)=.*/\1=***/' android/key.properties
           ls -l android/key.properties
 
       - name: Build AAB (release)
@@ -39,4 +48,3 @@ EOF
     artifacts:
       - build/app/outputs/bundle/release/app-release.aab
       - build/app/outputs/mapping/release/mapping.txt
-
