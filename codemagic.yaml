@@ -17,18 +17,19 @@ workflows:
           printf "%s" "$CM_KEYSTORE_B64" | base64 --decode > /tmp/hiraku-keystore.jks
           ls -l /tmp/hiraku-keystore.jks
 
-      - name: Create key.properties (root)
+      - name: Create key.properties (android)
         script: |
           set -e
-          cat > key.properties << EOF
-storePassword=$CM_KEYSTORE_PASSWORD
-keyPassword=$CM_KEY_PASSWORD
-keyAlias=$KEY_ALIAS
-storeFile=/tmp/hiraku-keystore.jks
+          cat > android/key.properties << EOF
+storePassword="$CM_KEYSTORE_PASSWORD"
+keyPassword="$CM_KEY_PASSWORD"
+keyAlias="$KEY_ALIAS"
+storeFile="/tmp/hiraku-keystore.jks"
 EOF
-          # 確認（秘密は出さない）
-          sed -E 's/(storePassword|keyPassword)=.*/\1=*** /' key.properties
-          ls -l key.properties
+          # 確認（秘寁E�E出さなぁE��E
+          sed -E 's/(storePassword|keyPassword)=.*/\1=*** /' android/key.properties
+
+          ls -l android/key.properties
 
       - name: Build AAB (release)
         script: |
@@ -38,3 +39,4 @@ EOF
     artifacts:
       - build/app/outputs/bundle/release/app-release.aab
       - build/app/outputs/mapping/release/mapping.txt
+
