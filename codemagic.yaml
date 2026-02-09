@@ -47,11 +47,7 @@ workflows:
             ls -l "$f"
           done
 
-      - name: Gradle signingReport
-        script: |
-          set -e
-          cd android
-          ./gradlew :app:signingReport
+
 
       - name: Build AAB (release)
         script: |
