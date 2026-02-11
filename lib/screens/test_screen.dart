@@ -1,6 +1,5 @@
 ﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 
 import '../models/app_model.dart';
 import '../services/firestore_service.dart';
@@ -20,6 +19,9 @@ class _TestScreenState extends State<TestScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
   final Set<String> _loadingAppIds = {};
+  String? _pendingUserId;
+  AppModel? _pendingInstallApp;
+  bool _isInstallConfirmDialogShowing = false;
 
   static const _helpSections = [
     UsageHelpSection(
@@ -33,6 +35,28 @@ class _TestScreenState extends State<TestScreen> {
       assetPath: 'assets/guide/placeholder.png',
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _lifecycleObserver.onResumed = _onAppResumed;
+    WidgetsBinding.instance.addObserver(_lifecycleObserver);
+  }
+
+  @override
+  void dispose() {
+    _lifecycleObserver.onResumed = null;
+    WidgetsBinding.instance.removeObserver(_lifecycleObserver);
+    super.dispose();
+  }
+
+  final _TestLifecycleObserver _lifecycleObserver = _TestLifecycleObserver();
+
+  void _onAppResumed() {
+    if (_pendingInstallApp == null || _isInstallConfirmDialogShowing) return;
+    if (!(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    Future.microtask(_showInstallConfirmationDialog);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -126,10 +150,6 @@ class _TestScreenState extends State<TestScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text('URL'),
-                const SizedBox(height: 4),
-                SelectableText(app.playUrl),
-                const SizedBox(height: 12),
                 const Text('コメント'),
                 const SizedBox(height: 4),
                 SelectableText(app.message.isEmpty ? '（コメントなし）' : app.message),
@@ -140,27 +160,6 @@ class _TestScreenState extends State<TestScreen> {
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
               child: const Text('閉じる'),
-            ),
-            TextButton(
-              onPressed: () async {
-                final opened = await _launcherService.openWebUrl(
-                  packageName: app.packageName,
-                  playUrl: app.playUrl,
-                );
-                if (!opened && mounted) {
-                  _showSnack('URLを開けませんでした。');
-                }
-              },
-              child: const Text('URLを開く'),
-            ),
-            TextButton(
-              onPressed: () async {
-                await Clipboard.setData(ClipboardData(text: app.playUrl));
-                if (mounted) {
-                  _showSnack('URLをコピーしました。');
-                }
-              },
-              child: const Text('URLをコピー'),
             ),
             FilledButton(
               onPressed: () {
@@ -178,18 +177,20 @@ class _TestScreenState extends State<TestScreen> {
   Future<void> _openApp(String userId, AppModel app) async {
     setState(() => _loadingAppIds.add(app.id));
     try {
-      await _firestoreService.openOtherAppTransaction(
-        currentUserId: userId,
-        targetApp: app,
-      );
+      _pendingUserId = userId;
+      _pendingInstallApp = app;
       final opened = await _launcherService.openPlayStore(
         packageName: app.packageName,
         playUrl: app.playUrl,
       );
       if (!opened) {
+        _pendingUserId = null;
+        _pendingInstallApp = null;
         _showSnack('ストアを開けませんでした。URLを確認してください。');
       }
     } catch (e) {
+      _pendingUserId = null;
+      _pendingInstallApp = null;
       _showSnack('起動に失敗しました: $e');
     } finally {
       if (mounted) {
@@ -198,9 +199,68 @@ class _TestScreenState extends State<TestScreen> {
     }
   }
 
+  Future<void> _showInstallConfirmationDialog() async {
+    final userId = _pendingUserId;
+    final app = _pendingInstallApp;
+    if (!mounted || userId == null || app == null || _isInstallConfirmDialogShowing) {
+      return;
+    }
+
+    _isInstallConfirmDialogShowing = true;
+    final installed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('確認'),
+        content: Text('${app.name} をインストールしましたか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('いいえ'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('はい'),
+          ),
+        ],
+      ),
+    );
+    _isInstallConfirmDialogShowing = false;
+
+    _pendingUserId = null;
+    _pendingInstallApp = null;
+
+    if (installed != true) return;
+
+    try {
+      await _firestoreService.confirmOtherAppInstallTransaction(
+        currentUserId: userId,
+        targetApp: app,
+      );
+      if (!mounted) return;
+      _showSnack('テスト履歴に追加しました。');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('履歴追加に失敗しました: $e');
+    }
+  }
+
   void _showSnack(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(message)),
     );
+  }
+}
+
+class _TestLifecycleObserver with WidgetsBindingObserver {
+  _TestLifecycleObserver();
+
+  void Function()? onResumed;
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      onResumed?.call();
+    }
   }
 }

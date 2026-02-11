@@ -116,7 +116,7 @@ class FirestoreService {
         );
   }
 
-  Future<void> openOtherAppTransaction({
+  Future<void> confirmOtherAppInstallTransaction({
     required String currentUserId,
     required AppModel targetApp,
   }) async {
@@ -178,6 +178,16 @@ class FirestoreService {
         'lastOpenedAt': FieldValue.serverTimestamp(),
       });
     });
+  }
+
+  Future<void> openOtherAppTransaction({
+    required String currentUserId,
+    required AppModel targetApp,
+  }) {
+    return confirmOtherAppInstallTransaction(
+      currentUserId: currentUserId,
+      targetApp: targetApp,
+    );
   }
 
   Future<void> openTestedAppTransaction({
