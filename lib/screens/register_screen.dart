@@ -31,13 +31,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   static const _helpSections = [
     UsageHelpSection(
       title: 'アプリ情報を入力',
-      body: '仮の説明文です。アプリ名とGoogle Play URLを入力します。',
-      assetPath: 'assets/guide/placeholder.png',
+      body: 'アプリの情報を入力しましょう\nアプリ名，アプリのURL，テストしてほしいことを書きましょう',
+      assetPath: 'assets/guide/2-1.jpg',
     ),
     UsageHelpSection(
-      title: 'アイコンを追加',
-      body: '仮の説明文です。ギャラリーからアイコン画像を選択します。',
-      assetPath: 'assets/guide/placeholder.png',
+      title: 'アイコンを追加(任意)',
+      body: 'ギャラリーからアイコン画像を選択しましょう\nアプリ一覧にアイコンが反映されます',
+      assetPath: 'assets/guide/2-2.jpg',
     ),
   ];
 
@@ -53,9 +53,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('ユーザー認証に失敗しました。')),
-      );
+      return const Scaffold(body: Center(child: Text('ユーザー認証に失敗しました。')));
     }
     return Scaffold(
       appBar: AppBar(
@@ -95,9 +93,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                   child: const Text('テストを終了'),
                 ),
                 const SizedBox(height: 12),
-                const Text(
-                  '次のアプリを登録するには、現在のテストを終了してください。',
-                ),
+                const Text('次のアプリを登録するには、現在のテストを終了してください。'),
               ],
             );
           }
@@ -128,7 +124,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
           controller: _urlController,
           decoration: const InputDecoration(
             labelText: 'Google Play URL',
-            hintText: 'https://play.google.com/store/apps/details?id=...',
+            hintText: 'ここにURLを張り付け',
             border: OutlineInputBorder(),
           ),
         ),
@@ -164,10 +160,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
               : const Text('登録する'),
         ),
         const SizedBox(height: 16),
-        const EmptyState(
-          title: 'ポイント',
-          message: '登録できるアプリは同時に1つまでです。',
-        ),
+        const EmptyState(title: 'ポイント', message: '登録できるアプリは同時に1つまでです。'),
       ],
     );
   }
@@ -239,8 +232,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
