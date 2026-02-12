@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -152,7 +152,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const Spacer(),
             Row(
               children: [
-                TextButton(onPressed: () => _goToPage(_totalSteps - 1), child: const Text('スキップ')),
+                TextButton(
+                  onPressed: () => _goToPage(_totalSteps - 1),
+                  child: const Text('スキップ'),
+                ),
                 const Spacer(),
                 FilledButton(onPressed: _nextPage, child: const Text('次へ')),
               ],
@@ -175,9 +178,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             const SizedBox(height: 12),
             Text(
               'このページでは Googleグループの参加リンクのみを表示します。'
-              '\nGoogleグループへ参加後、次へ進んでください。',
+              '\nGoogleグループへ参加後、次へ進んでください。\nグループへは，「使い方」からも参加することができます．',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.8),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/guide/3-1.jpg',
+                width: double.infinity,
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 16),
@@ -231,11 +243,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             Text('Google Play Console 登録', style: theme.textTheme.titleLarge),
             const SizedBox(height: 12),
             Text(
-              '自分のアプリをテストしてもらう場合は、下記メールアドレスをコピーして '
-              'Google Play Console のクローズドテスト設定へ登録してください。'
-              '\nこのアプリ内への入力は不要です。',
+              '他のユーザーがあなたのアプリをインストールできるように，GoogleグループのメールアドレスをGoogle Play Consoleに追加してください．\nこれらの説明は，「使い方」でも確認することができます．',
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: theme.colorScheme.onSurface.withOpacity(0.8),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.asset(
+                'assets/guide/3-2.jpg',
+                width: double.infinity,
+                fit: BoxFit.contain,
               ),
             ),
             const SizedBox(height: 16),
@@ -259,7 +278,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
             OutlinedButton.icon(
               onPressed: _copyTeamEmail,
               icon: const Icon(Icons.copy),
-              label: const Text('メールアドレスをコピー'),
+              label: const Text('Googleグループのメールをコピー'),
+            ),
+            const SizedBox(height: 8),
+            FilledButton.icon(
+              onPressed: _openPlayConsole,
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('Google Play Consoleを開く'),
             ),
             const Spacer(),
             Row(
@@ -385,6 +410,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     await Clipboard.setData(const ClipboardData(text: kTeamJoinEmail));
     if (!mounted) return;
     _showSnack('Googleグループのメールアドレスをコピーしました。');
+  }
+
+  Future<void> _openPlayConsole() async {
+    final uri = Uri.parse('https://play.google.com/console/');
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
   void _showSnack(String message) {

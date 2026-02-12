@@ -1,10 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-import '../constants.dart';
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
 import '../services/discord_webhook_service.dart';
@@ -32,16 +29,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   static const _helpSections = [
     UsageHelpSection(
-      title: '\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u3092\u66f4\u65b0',
+      title: 'Discordへ参加したい方へ',
       body:
-          '\u4eee\u306e\u8aac\u660e\u6587\u3067\u3059\u3002\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4\u3067\u304d\u307e\u3059\u3002',
-      assetPath: 'assets/guide/placeholder.png',
+          'Discordに参加するを押し，招待リンクでDiscordへ参加してください！\nその後本アプリに戻り，「はい」を選択するとDiscordにあなたのアプリが自動的に紹介されます！',
+      assetPath: 'assets/guide/4-1.jpg',
     ),
     UsageHelpSection(
-      title: '\u30c6\u30b9\u30c8\u5c65\u6b74\u3092\u78ba\u8a8d',
+      title: '他のユーザーのアプリを開く方法',
       body:
-          '\u4eee\u306e\u8aac\u660e\u6587\u3067\u3059\u3002\u958b\u3044\u305f\u30a2\u30d7\u30ea\u306e\u5c65\u6b74\u304c\u8868\u793a\u3055\u308c\u307e\u3059\u3002',
-      assetPath: 'assets/guide/placeholder.png',
+          'テスト履歴から「開く」ボタンを押しましょう！\nアプリが開かれます！\nアプリをアンインストールしてしまった場合も，開くを押すことでGoogle Playに飛ぶことができます．',
+      assetPath: 'assets/guide/1-4.jpg',
     ),
   ];
 
@@ -59,7 +56,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('\u30de\u30a4\u30da\u30fc\u30b8'),
+        title: const Text('マイページ'),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
@@ -76,8 +73,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
         padding: const EdgeInsets.all(16),
         children: [
           _buildProfileSection(user.uid),
-          const SizedBox(height: 16),
-          _buildTeamSection(),
           const SizedBox(height: 16),
           _buildDiscordSection(),
           const SizedBox(height: 16),
@@ -140,7 +135,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   '\u30e6\u30fc\u30b6\u30fc\u540d: ${username.isEmpty ? '\u672a\u8a2d\u5b9a' : username}',
                 ),
                 const SizedBox(height: 4),
-                Text('\u30c6\u30b9\u30c8\u56de\u6570: $testedCount'),
+                Text('あなたがテストした回数: $testedCount'),
                 const SizedBox(height: 12),
                 FilledButton.tonal(
                   onPressed: () => _editUsername(userId, username),
@@ -164,53 +159,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildTeamSection() {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Google Groups',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              '\u30c6\u30b9\u30c8\u306b\u53c2\u52a0\u3059\u308b\u306b\u306f\u30c1\u30fc\u30e0\u53c2\u52a0\u304c\u5fc5\u8981\u3067\u3059\u3002',
-            ),
-            const SizedBox(height: 8),
-            Text(kTeamJoinUrl, style: const TextStyle(color: Colors.blueGrey)),
-            const SizedBox(height: 8),
-            Text(
-              kTeamJoinEmail,
-              style: const TextStyle(color: Colors.blueGrey),
-            ),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                OutlinedButton.icon(
-                  onPressed: _openTeamUrl,
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('\u30ea\u30f3\u30af\u3092\u958b\u304f'),
-                ),
-                OutlinedButton.icon(
-                  onPressed: _copyTeamEmail,
-                  icon: const Icon(Icons.copy),
-                  label: const Text(
-                    '\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3092\u30b3\u30d4\u30fc',
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
     );
   }
 
@@ -464,11 +412,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
-  Future<void> _openTeamUrl() async {
-    final uri = Uri.parse(kTeamJoinUrl);
-    await launchUrl(uri, mode: LaunchMode.externalApplication);
-  }
-
   Future<void> _openDiscordJoinScreen() async {
     await Navigator.of(
       context,
@@ -480,18 +423,6 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final optedIn = await _discordWebhookService.isDiscordOptIn();
     if (!mounted) return;
     setState(() => _discordOptIn = optedIn);
-  }
-
-  Future<void> _copyTeamEmail() async {
-    await Clipboard.setData(const ClipboardData(text: kTeamJoinEmail));
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text(
-          'Google Groups\u306e\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3092\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f\u3002',
-        ),
-      ),
-    );
   }
 
   void _showSnack(String message) {

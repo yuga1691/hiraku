@@ -50,20 +50,7 @@ class UsageGuideScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('使い方'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            tooltip: '使い方を開く',
-            onPressed: () => showUsageHelpSheet(
-              context,
-              title: '使い方のガイド',
-              sections: _sections,
-            ),
-          ),
-        ],
-      ),
+      appBar: AppBar(title: const Text('使い方')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
