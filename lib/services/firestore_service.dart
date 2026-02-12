@@ -128,6 +128,24 @@ class FirestoreService {
       SetOptions(merge: true),
     );
 
+    final historySnapshot = await _db.collectionGroup('testing').get();
+    final batch = _db.batch();
+    for (final doc in historySnapshot.docs) {
+      final data = doc.data();
+      final historyAppId = (data['appId'] ?? '') as String;
+      if (historyAppId != appId) {
+        continue;
+      }
+      batch.set(
+        doc.reference,
+        {'isEndedByDeveloper': true},
+        SetOptions(merge: true),
+      );
+    }
+    if (historySnapshot.docs.isNotEmpty) {
+      await batch.commit();
+    }
+
     await _notifyTestEndedIfOptedIn(
       userId: ownerUserId,
       appName: appName,
@@ -234,6 +252,7 @@ class FirestoreService {
         'packageName': targetApp.packageName,
         'openCountByMe': prevCount + 1,
         'lastOpenedAt': FieldValue.serverTimestamp(),
+        'isEndedByDeveloper': !isActive,
       });
     });
 
@@ -315,6 +334,7 @@ class FirestoreService {
         'packageName': history.packageName,
         'openCountByMe': prevCount + 1,
         'lastOpenedAt': FieldValue.serverTimestamp(),
+        'isEndedByDeveloper': !isActive,
       });
     });
   }

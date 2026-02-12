@@ -33,12 +33,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
   static const _helpSections = [
     UsageHelpSection(
       title: '\u30d7\u30ed\u30d5\u30a3\u30fc\u30eb\u3092\u66f4\u65b0',
-      body: '\u4eee\u306e\u8aac\u660e\u6587\u3067\u3059\u3002\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4\u3067\u304d\u307e\u3059\u3002',
+      body:
+          '\u4eee\u306e\u8aac\u660e\u6587\u3067\u3059\u3002\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4\u3067\u304d\u307e\u3059\u3002',
       assetPath: 'assets/guide/placeholder.png',
     ),
     UsageHelpSection(
       title: '\u30c6\u30b9\u30c8\u5c65\u6b74\u3092\u78ba\u8a8d',
-      body: '\u4eee\u306e\u8aac\u660e\u6587\u3067\u3059\u3002\u958b\u3044\u305f\u30a2\u30d7\u30ea\u306e\u5c65\u6b74\u304c\u8868\u793a\u3055\u308c\u307e\u3059\u3002',
+      body:
+          '\u4eee\u306e\u8aac\u660e\u6587\u3067\u3059\u3002\u958b\u3044\u305f\u30a2\u30d7\u30ea\u306e\u5c65\u6b74\u304c\u8868\u793a\u3055\u308c\u307e\u3059\u3002',
       assetPath: 'assets/guide/placeholder.png',
     ),
   ];
@@ -134,13 +136,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Text('\u30e6\u30fc\u30b6\u30fc\u540d: ${username.isEmpty ? '\u672a\u8a2d\u5b9a' : username}'),
+                Text(
+                  '\u30e6\u30fc\u30b6\u30fc\u540d: ${username.isEmpty ? '\u672a\u8a2d\u5b9a' : username}',
+                ),
                 const SizedBox(height: 4),
                 Text('\u30c6\u30b9\u30c8\u56de\u6570: $testedCount'),
                 const SizedBox(height: 12),
                 FilledButton.tonal(
                   onPressed: () => _editUsername(userId, username),
-                  child: const Text('\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4'),
+                  child: const Text(
+                    '\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4',
+                  ),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
@@ -149,7 +155,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Theme.of(context).colorScheme.error,
                   ),
-                  label: const Text('\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664'),
+                  label: const Text(
+                    '\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664',
+                  ),
                 ),
               ],
             ),
@@ -171,12 +179,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text('\u30c6\u30b9\u30c8\u306b\u53c2\u52a0\u3059\u308b\u306b\u306f\u30c1\u30fc\u30e0\u53c2\u52a0\u304c\u5fc5\u8981\u3067\u3059\u3002'),
-            const SizedBox(height: 8),
-            Text(
-              kTeamJoinUrl,
-              style: const TextStyle(color: Colors.blueGrey),
+            const Text(
+              '\u30c6\u30b9\u30c8\u306b\u53c2\u52a0\u3059\u308b\u306b\u306f\u30c1\u30fc\u30e0\u53c2\u52a0\u304c\u5fc5\u8981\u3067\u3059\u3002',
             ),
+            const SizedBox(height: 8),
+            Text(kTeamJoinUrl, style: const TextStyle(color: Colors.blueGrey)),
             const SizedBox(height: 8),
             Text(
               kTeamJoinEmail,
@@ -195,7 +202,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 OutlinedButton.icon(
                   onPressed: _copyTeamEmail,
                   icon: const Icon(Icons.copy),
-                  label: const Text('\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3092\u30b3\u30d4\u30fc'),
+                  label: const Text(
+                    '\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3092\u30b3\u30d4\u30fc',
+                  ),
                 ),
               ],
             ),
@@ -222,7 +231,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
                 const SizedBox(height: 8),
                 if (app == null)
-                  const Text('\u767b\u9332\u4e2d\u306e\u30a2\u30d7\u30ea\u306f\u3042\u308a\u307e\u305b\u3093\u3002')
+                  const Text(
+                    '\u767b\u9332\u4e2d\u306e\u30a2\u30d7\u30ea\u306f\u3042\u308a\u307e\u305b\u3093\u3002',
+                  )
                 else
                   MyAppCard(app: app),
               ],
@@ -258,7 +269,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 if (items.isEmpty) {
                   return const EmptyState(
                     title: '\u5c65\u6b74\u304c\u3042\u308a\u307e\u305b\u3093',
-                    message: '\u30c6\u30b9\u30c8\u3057\u305f\u30a2\u30d7\u30ea\u304c\u3053\u3053\u306b\u8868\u793a\u3055\u308c\u307e\u3059\u3002',
+                    message:
+                        '\u30c6\u30b9\u30c8\u3057\u305f\u30a2\u30d7\u30ea\u304c\u3053\u3053\u306b\u8868\u793a\u3055\u308c\u307e\u3059\u3002',
                   );
                 }
                 return Column(
@@ -266,7 +278,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       .map(
                         (item) => ListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: Text(item.name),
+                          title: Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            children: [
+                              Text(item.name),
+                              if (item.isEndedByDeveloper)
+                                Text(
+                                  '（テスト終了）',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                            ],
+                          ),
                           subtitle: Text(
                             'Open\u56de\u6570: ${item.openCountByMe}'
                             '${item.lastOpenedAt == null ? '' : ' / \u6700\u7d42: ${_dateFormat.format(item.lastOpenedAt!)}'}',
@@ -290,7 +316,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Future<void> _openTestedApp(TestingModel item) async {
     if (item.playUrl.isEmpty && item.packageName.isEmpty) {
-      _showSnack('URL\u304c\u8a2d\u5b9a\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002');
+      _showSnack(
+        'URL\u304c\u8a2d\u5b9a\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002',
+      );
       return;
     }
     try {
@@ -308,7 +336,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
               playUrl: item.playUrl,
             );
       if (!opened) {
-        _showSnack('\u30b9\u30c8\u30a2\u3092\u958b\u3051\u307e\u305b\u3093\u3067\u3057\u305f\u3002URL\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002');
+        _showSnack(
+          '\u30b9\u30c8\u30a2\u3092\u958b\u3051\u307e\u305b\u3093\u3067\u3057\u305f\u3002URL\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
+        );
       }
     } catch (e) {
       _showSnack('\u8d77\u52d5\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $e');
@@ -323,7 +353,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
         title: const Text('\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(labelText: '\u30e6\u30fc\u30b6\u30fc\u540d'),
+          decoration: const InputDecoration(
+            labelText: '\u30e6\u30fc\u30b6\u30fc\u540d',
+          ),
         ),
         actions: [
           TextButton(
@@ -346,7 +378,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664'),
-        content: const Text('\u3053\u306e\u64cd\u4f5c\u306f\u53d6\u308a\u6d88\u305b\u307e\u305b\u3093\u3002\u672c\u5f53\u306b\u524a\u9664\u3057\u307e\u3059\u304b\uff1f'),
+        content: const Text(
+          '\u3053\u306e\u64cd\u4f5c\u306f\u53d6\u308a\u6d88\u305b\u307e\u305b\u3093\u3002\u672c\u5f53\u306b\u524a\u9664\u3057\u307e\u3059\u304b\uff1f',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -372,7 +406,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('\u524a\u9664\u3059\u308b\u306b\u306f\u300c\u524a\u9664\u300d\u3068\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002'),
+            const Text(
+              '\u524a\u9664\u3059\u308b\u306b\u306f\u300c\u524a\u9664\u300d\u3068\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
+            ),
             const SizedBox(height: 8),
             TextField(
               controller: inputController,
@@ -388,7 +424,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
             child: const Text('\u30ad\u30e3\u30f3\u30bb\u30eb'),
           ),
           FilledButton(
-            onPressed: () => Navigator.pop(context, inputController.text.trim()),
+            onPressed: () =>
+                Navigator.pop(context, inputController.text.trim()),
             child: const Text('\u78ba\u5b9a'),
           ),
         ],
@@ -396,7 +433,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
 
     if (confirmText != '\u524a\u9664') {
-      _showSnack('\u300c\u524a\u9664\u300d\u3068\u5165\u529b\u3057\u305f\u5834\u5408\u306e\u307f\u524a\u9664\u3067\u304d\u307e\u3059\u3002');
+      _showSnack(
+        '\u300c\u524a\u9664\u300d\u3068\u5165\u529b\u3057\u305f\u5834\u5408\u306e\u307f\u524a\u9664\u3067\u304d\u307e\u3059\u3002',
+      );
       return;
     }
 
@@ -405,19 +444,23 @@ class _MyPageScreenState extends State<MyPageScreen> {
       await FirebaseAuth.instance.currentUser?.delete();
       if (!mounted) return;
       Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(
-          builder: (_) => const _AccountDeletedNoticeScreen(),
-        ),
+        MaterialPageRoute(builder: (_) => const _AccountDeletedNoticeScreen()),
         (route) => false,
       );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        _showSnack('\u518d\u30ed\u30b0\u30a4\u30f3\u5f8c\u306b\u518d\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002');
+        _showSnack(
+          '\u518d\u30ed\u30b0\u30a4\u30f3\u5f8c\u306b\u518d\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002',
+        );
       } else {
-        _showSnack('\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: ${e.code}');
+        _showSnack(
+          '\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: ${e.code}',
+        );
       }
     } catch (e) {
-      _showSnack('\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $e');
+      _showSnack(
+        '\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $e',
+      );
     }
   }
 
@@ -427,9 +470,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Future<void> _openDiscordJoinScreen() async {
-    await Navigator.of(context).push<bool>(
-      MaterialPageRoute(builder: (_) => const DiscordJoinScreen()),
-    );
+    await Navigator.of(
+      context,
+    ).push<bool>(MaterialPageRoute(builder: (_) => const DiscordJoinScreen()));
     await _loadDiscordOptIn();
   }
 
@@ -443,15 +486,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
     await Clipboard.setData(const ClipboardData(text: kTeamJoinEmail));
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Google Groups\u306e\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3092\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f\u3002')),
+      const SnackBar(
+        content: Text(
+          'Google Groups\u306e\u30e1\u30fc\u30eb\u30a2\u30c9\u30ec\u30b9\u3092\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f\u3002',
+        ),
+      ),
     );
   }
 
   void _showSnack(String message) {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -483,9 +530,7 @@ class _AccountDeletedNoticeScreen extends StatelessWidget {
               FilledButton(
                 onPressed: () {
                   Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(
-                      builder: (_) => const OnboardingScreen(),
-                    ),
+                    MaterialPageRoute(builder: (_) => const OnboardingScreen()),
                     (route) => false,
                   );
                 },

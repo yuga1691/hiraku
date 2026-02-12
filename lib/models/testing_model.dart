@@ -6,6 +6,7 @@ class TestingModel {
     required this.packageName,
     required this.lastOpenedAt,
     required this.openCountByMe,
+    required this.isEndedByDeveloper,
   });
 
   final String appId;
@@ -14,6 +15,7 @@ class TestingModel {
   final String packageName;
   final DateTime? lastOpenedAt;
   final int openCountByMe;
+  final bool isEndedByDeveloper;
 
   factory TestingModel.fromMap(Map<String, dynamic> data) {
     return TestingModel(
@@ -23,6 +25,7 @@ class TestingModel {
       packageName: (data['packageName'] ?? '') as String,
       lastOpenedAt: (data['lastOpenedAt'] as dynamic)?.toDate(),
       openCountByMe: (data['openCountByMe'] ?? 0) as int,
+      isEndedByDeveloper: (data['isEndedByDeveloper'] ?? false) as bool,
     );
   }
 }
