@@ -116,6 +116,23 @@ class FirestoreService {
         );
   }
 
+  Future<void> deleteUserData(String userId) async {
+    final userRef = _users.doc(userId);
+    final testingSnapshot = await userRef.collection('testing').get();
+    final ownedAppsSnapshot =
+        await _apps.where('ownerUserId', isEqualTo: userId).get();
+
+    final batch = _db.batch();
+    for (final doc in testingSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    for (final doc in ownedAppsSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+    batch.delete(userRef);
+    await batch.commit();
+  }
+
   Future<void> confirmOtherAppInstallTransaction({
     required String currentUserId,
     required AppModel targetApp,

@@ -42,7 +42,7 @@ class MyAppCard extends StatelessWidget {
                 ),
               ],
               const SizedBox(height: 8),
-              Text('残り露出回数: ${app.remainingExposure}'),
+              Text('テスト一覧表示回数 残り: ${app.remainingExposure}'),
               Text('Open回数: ${app.openedCount}'),
               if (dailyEntries.isNotEmpty) ...[
                 const SizedBox(height: 4),

@@ -1,9 +1,9 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../constants.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/cyber_background.dart';
@@ -21,6 +21,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   final PageController _pageController = PageController();
   final TextEditingController _usernameController = TextEditingController();
+  final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final OnboardingService _onboardingService = OnboardingService();
 
@@ -358,10 +359,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     }
     setState(() => _saving = true);
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
-        throw Exception('ユーザーが認証されていません。');
-      }
+      final user = await _authService.ensureSignedIn();
       await _firestoreService.ensureUserDoc(user.uid);
       await _firestoreService.updateUsername(user.uid, username);
       await _onboardingService.markCompleted();

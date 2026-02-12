@@ -8,7 +8,18 @@ class AuthService {
   Future<User> ensureSignedIn() async {
     final existing = _auth.currentUser;
     if (existing != null) {
-      return existing;
+      try {
+        await existing.reload();
+        final refreshed = _auth.currentUser;
+        if (refreshed != null) {
+          return refreshed;
+        }
+      } on FirebaseAuthException catch (e) {
+        if (e.code != 'user-not-found' && e.code != 'user-disabled') {
+          rethrow;
+        }
+        await _auth.signOut();
+      }
     }
     final result = await _auth.signInAnonymously();
     return result.user!;
