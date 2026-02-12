@@ -26,13 +26,23 @@ class _TestScreenState extends State<TestScreen> {
   static const _helpSections = [
     UsageHelpSection(
       title: 'テストするアプリを選ぶ',
-      body: '仮の説明文です。一覧からアプリを選んで詳細を確認します。',
-      assetPath: 'assets/guide/placeholder.png',
+      contents: const [
+        UsageHelpContent.text('まず一覧から対象アプリを選びます'),
+        UsageHelpContent.image('assets/guide/1-1.jpg'),
+        UsageHelpContent.text(
+          '次に「ストアを開く」を押します\n Google Playを開きアプリをインストールしましょう',
+        ),
+        UsageHelpContent.image('assets/guide/1-2.jpg'),
+      ],
     ),
     UsageHelpSection(
-      title: 'アプリを開く',
-      body: '仮の説明文です。開くボタンを押すとストアが開きます。',
-      assetPath: 'assets/guide/placeholder.png',
+      title: 'インストール後',
+      contents: const [
+        UsageHelpContent.text('本アプリに戻り，選択肢の「はい」を押してください'),
+        UsageHelpContent.image('assets/guide/1-3.jpg'),
+        UsageHelpContent.text('マイページのテスト履歴に表示されるようになります'),
+        UsageHelpContent.image('assets/guide/1-4.jpg'),
+      ],
     ),
   ];
 
@@ -62,9 +72,7 @@ class _TestScreenState extends State<TestScreen> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
-      return const Scaffold(
-        body: Center(child: Text('ユーザー認証に失敗しました。')),
-      );
+      return const Scaffold(body: Center(child: Text('ユーザー認証に失敗しました。')));
     }
     return Scaffold(
       appBar: AppBar(
@@ -202,7 +210,10 @@ class _TestScreenState extends State<TestScreen> {
   Future<void> _showInstallConfirmationDialog() async {
     final userId = _pendingUserId;
     final app = _pendingInstallApp;
-    if (!mounted || userId == null || app == null || _isInstallConfirmDialogShowing) {
+    if (!mounted ||
+        userId == null ||
+        app == null ||
+        _isInstallConfirmDialogShowing) {
       return;
     }
 
@@ -246,9 +257,9 @@ class _TestScreenState extends State<TestScreen> {
   }
 
   void _showSnack(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message)),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
 

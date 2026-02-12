@@ -108,28 +108,49 @@ class _GuideCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              if (section.assetPath != null)
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(12),
-                  child: Image.asset(
-                    section.assetPath!,
-                    height: 180,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              const SizedBox(height: 12),
-              Text(
-                section.body,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: theme.colorScheme.onSurface.withOpacity(0.8),
-                ),
-              ),
+              ..._buildSectionContents(context, section.resolvedContents),
             ],
           ),
         ),
       ),
     );
+  }
+
+  List<Widget> _buildSectionContents(
+    BuildContext context,
+    List<UsageHelpContent> contents,
+  ) {
+    final theme = Theme.of(context);
+    final widgets = <Widget>[];
+    for (final content in contents) {
+      if (content.isText) {
+        widgets.add(
+          Text(
+            content.text!,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: theme.colorScheme.onSurface.withOpacity(0.8),
+            ),
+          ),
+        );
+      } else if (content.assetPath != null && content.assetPath!.isNotEmpty) {
+        widgets.add(
+          ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: Image.asset(
+              content.assetPath!,
+              height: 180,
+              width: double.infinity,
+              fit: BoxFit.cover,
+            ),
+          ),
+        );
+      }
+      widgets.add(const SizedBox(height: 12));
+    }
+    if (widgets.isNotEmpty) {
+      widgets.removeLast();
+    }
+    return widgets;
   }
 }

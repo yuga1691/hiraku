@@ -1,4 +1,4 @@
-ï»¿import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'screens/home_screen.dart';
@@ -55,6 +55,7 @@ class HirakuApp extends StatelessWidget {
           baseTextTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
     );
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'hiraku',
       theme: ThemeData(
         useMaterial3: true,
@@ -173,7 +174,7 @@ class _RootGateState extends State<RootGate> {
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
-              child: Text('åˆæœŸåŒ–ä¸­ã«ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ã¾ã—ãŸ: ${snapshot.error}'),
+              child: Text('‰Šú‰»’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½: ${snapshot.error}'),
             ),
           );
         }
