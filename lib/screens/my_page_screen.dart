@@ -7,11 +7,13 @@ import 'package:url_launcher/url_launcher.dart';
 import '../constants.dart';
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
+import '../services/discord_webhook_service.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/help_sheet.dart';
 import '../widgets/my_app_card.dart';
+import 'discord_join_screen.dart';
 import 'onboarding_screen.dart';
 
 class MyPageScreen extends StatefulWidget {
@@ -24,7 +26,9 @@ class MyPageScreen extends StatefulWidget {
 class _MyPageScreenState extends State<MyPageScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
+  final DiscordWebhookService _discordWebhookService = DiscordWebhookService();
   final DateFormat _dateFormat = DateFormat('yyyy/MM/dd HH:mm');
+  bool? _discordOptIn;
 
   static const _helpSections = [
     UsageHelpSection(
@@ -38,6 +42,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
       assetPath: 'assets/guide/placeholder.png',
     ),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDiscordOptIn();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,10 +77,41 @@ class _MyPageScreenState extends State<MyPageScreen> {
           const SizedBox(height: 16),
           _buildTeamSection(),
           const SizedBox(height: 16),
+          _buildDiscordSection(),
+          const SizedBox(height: 16),
           _buildMyAppSection(user.uid),
           const SizedBox(height: 16),
           _buildTestingHistory(user.uid),
         ],
+      ),
+    );
+  }
+
+  Widget _buildDiscordSection() {
+    final status = _discordOptIn;
+    final statusText = status == null
+        ? '\u8aad\u307f\u8fbc\u307f\u4e2d'
+        : (status ? '\u53c2\u52a0\u6e08' : '\u672a\u53c2\u52a0');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Discord',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text('\u53c2\u52a0\u72b6\u614b: $statusText'),
+            const SizedBox(height: 12),
+            FilledButton.tonalIcon(
+              onPressed: _openDiscordJoinScreen,
+              icon: const Icon(Icons.forum_outlined),
+              label: const Text('Discord\u306b\u53c2\u52a0\u3059\u308b'),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -383,6 +424,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _openTeamUrl() async {
     final uri = Uri.parse(kTeamJoinUrl);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
+
+  Future<void> _openDiscordJoinScreen() async {
+    await Navigator.of(context).push<bool>(
+      MaterialPageRoute(builder: (_) => const DiscordJoinScreen()),
+    );
+    await _loadDiscordOptIn();
+  }
+
+  Future<void> _loadDiscordOptIn() async {
+    final optedIn = await _discordWebhookService.isDiscordOptIn();
+    if (!mounted) return;
+    setState(() => _discordOptIn = optedIn);
   }
 
   Future<void> _copyTeamEmail() async {

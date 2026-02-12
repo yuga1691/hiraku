@@ -2,9 +2,11 @@
 
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
+import 'discord_webhook_service.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final DiscordWebhookService _discordWebhookService = DiscordWebhookService();
 
   CollectionReference<Map<String, dynamic>> get _users =>
       _db.collection('users');
@@ -46,6 +48,19 @@ class FirestoreService {
       final doc = snapshot.docs.first;
       return AppModel.fromMap(doc.id, doc.data());
     });
+  }
+
+  Future<AppModel?> fetchMyActiveAppOnce(String userId) async {
+    final snapshot = await _apps
+        .where('ownerUserId', isEqualTo: userId)
+        .where('isActive', isEqualTo: true)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) {
+      return null;
+    }
+    final doc = snapshot.docs.first;
+    return AppModel.fromMap(doc.id, doc.data());
   }
 
   Stream<List<AppModel>> watchAvailableApps() {
@@ -91,15 +106,31 @@ class FirestoreService {
       'createdAt': FieldValue.serverTimestamp(),
       'endedAt': null,
     });
+
+    await _notifyAppRegisteredIfOptedIn(
+      userId: userId,
+      appName: name,
+      playUrl: playUrl,
+    );
   }
 
   Future<void> endMyApp(String appId) async {
+    final appSnapshot = await _apps.doc(appId).get();
+    final appData = appSnapshot.data();
+    final ownerUserId = (appData?['ownerUserId'] ?? '') as String;
+    final appName = (appData?['name'] ?? '') as String;
+
     await _apps.doc(appId).set(
       {
         'isActive': false,
         'endedAt': FieldValue.serverTimestamp(),
       },
       SetOptions(merge: true),
+    );
+
+    await _notifyTestEndedIfOptedIn(
+      userId: ownerUserId,
+      appName: appName,
     );
   }
 
@@ -114,6 +145,15 @@ class FirestoreService {
               .map((doc) => TestingModel.fromMap(doc.data()))
               .toList(),
         );
+  }
+
+  Future<String> fetchUsername(String userId) async {
+    final snapshot = await _users.doc(userId).get();
+    final username = (snapshot.data()?['username'] ?? '') as String;
+    if (username.isEmpty) {
+      return 'ユーザー';
+    }
+    return username;
   }
 
   Future<void> deleteUserData(String userId) async {
@@ -146,8 +186,9 @@ class FirestoreService {
         .where('isActive', isEqualTo: true)
         .limit(1)
         .get();
-    final myActiveAppRef =
-        myActiveAppSnapshot.docs.isEmpty ? null : myActiveAppSnapshot.docs.first.reference;
+    final myActiveAppRef = myActiveAppSnapshot.docs.isEmpty
+        ? null
+        : myActiveAppSnapshot.docs.first.reference;
 
     final historyRef =
         _users.doc(currentUserId).collection('testing').doc(targetApp.id);
@@ -195,6 +236,11 @@ class FirestoreService {
         'lastOpenedAt': FieldValue.serverTimestamp(),
       });
     });
+
+    await _notifyTestJoinedIfOptedIn(
+      userId: currentUserId,
+      appName: targetApp.name,
+    );
   }
 
   Future<void> openOtherAppTransaction({
@@ -224,8 +270,7 @@ class FirestoreService {
         ? null
         : myActiveAppSnapshot.docs.first.reference;
 
-    final historyRef =
-        _users.doc(currentUserId).collection('testing').doc(history.appId);
+    final historyRef = _users.doc(currentUserId).collection('testing').doc(history.appId);
 
     await _db.runTransaction((tx) async {
       final targetSnap = await tx.get(targetRef);
@@ -272,5 +317,47 @@ class FirestoreService {
         'lastOpenedAt': FieldValue.serverTimestamp(),
       });
     });
+  }
+
+  Future<void> _notifyAppRegisteredIfOptedIn({
+    required String userId,
+    required String appName,
+    required String playUrl,
+  }) async {
+    if (userId.isEmpty) return;
+    final optedIn = await _discordWebhookService.isDiscordOptIn();
+    if (!optedIn) return;
+    await _discordWebhookService.sendAppRegisteredNotification(
+      appName: appName,
+      playUrl: playUrl,
+    );
+  }
+
+  Future<void> _notifyTestJoinedIfOptedIn({
+    required String userId,
+    required String appName,
+  }) async {
+    if (userId.isEmpty) return;
+    final optedIn = await _discordWebhookService.isDiscordOptIn();
+    if (!optedIn) return;
+    final username = await fetchUsername(userId);
+    await _discordWebhookService.sendTestJoinedNotification(
+      username: username,
+      appName: appName,
+    );
+  }
+
+  Future<void> _notifyTestEndedIfOptedIn({
+    required String userId,
+    required String appName,
+  }) async {
+    if (userId.isEmpty || appName.isEmpty) return;
+    final optedIn = await _discordWebhookService.isDiscordOptIn();
+    if (!optedIn) return;
+    final username = await fetchUsername(userId);
+    await _discordWebhookService.sendTestEndedNotification(
+      username: username,
+      appName: appName,
+    );
   }
 }
