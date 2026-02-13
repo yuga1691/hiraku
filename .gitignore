@@ -46,3 +46,11 @@ app.*.map.json
 android/key.properties
 *.jks
 *.keystore
+
+# Secrets
+.env
+.env.*
+!.env.example
+secrets/
+functions/.env
+functions/.env.*

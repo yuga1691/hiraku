@@ -1,15 +1,14 @@
-import 'dart:convert';
-import 'dart:io';
-
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../constants.dart';
 
 class DiscordWebhookService {
   static const String _discordOptInKey = 'discordOptIn';
   static const String _sentRegisteredAppOnDiscordJoinKey =
       'sentRegisteredAppOnDiscordJoin';
+  static final FirebaseFunctions _functions = FirebaseFunctions.instanceFor(
+    region: 'asia-northeast1',
+  );
 
   Future<bool> isDiscordOptIn() async {
     final prefs = await SharedPreferences.getInstance();
@@ -32,8 +31,9 @@ class DiscordWebhookService {
   }
 
   Future<void> sendDiscordJoinNotification({required String username}) {
-    return _postMessage(
-      '\u{1F389} $username \u3055\u3093\u304cDiscord\u306b\u53c2\u52a0\u3057\u307e\u3057\u305f',
+    return _sendNotification(
+      type: 'join',
+      userName: username,
     );
   }
 
@@ -46,9 +46,12 @@ class DiscordWebhookService {
     final summary = appDescription.isEmpty
         ? '\uff08\u672a\u5165\u529b\uff09'
         : appDescription;
-    return _postMessage(
-      '\u{1F195} $username \u3055\u3093\u304c\u767b\u9332\u3057\u305f\u30c6\u30b9\u30c8\u30a2\u30d7\u30ea: $appName $playUrl\n'
-      '\u30c6\u30b9\u30c8\u6982\u8981: $summary',
+    return _sendNotification(
+      type: 'registered_app_on_join',
+      userName: username,
+      appName: appName,
+      appDescription: summary,
+      playUrl: playUrl,
     );
   }
 
@@ -56,8 +59,10 @@ class DiscordWebhookService {
     required String appName,
     required String playUrl,
   }) {
-    return _postMessage(
-      '\u{1F195} \u65b0\u3057\u3044\u30c6\u30b9\u30c8\u30a2\u30d7\u30ea\u304c\u767b\u9332\u3055\u308c\u307e\u3057\u305f: $appName $playUrl',
+    return _sendNotification(
+      type: 'app_registered',
+      appName: appName,
+      playUrl: playUrl,
     );
   }
 
@@ -65,8 +70,10 @@ class DiscordWebhookService {
     required String username,
     required String appName,
   }) {
-    return _postMessage(
-      '\u{1F389} $username \u304c $appName \u306e\u30c6\u30b9\u30c8\u306b\u53c2\u52a0\u3057\u307e\u3057\u305f',
+    return _sendNotification(
+      type: 'test_joined',
+      userName: username,
+      appName: appName,
     );
   }
 
@@ -74,33 +81,46 @@ class DiscordWebhookService {
     required String username,
     required String appName,
   }) {
-    return _postMessage(
-      '\u2705 $username \u304c $appName \u306e\u30c6\u30b9\u30c8\u3092\u7d42\u4e86\u3057\u307e\u3057\u305f',
+    return _sendNotification(
+      type: 'test_ended',
+      userName: username,
+      appName: appName,
     );
   }
 
-  Future<void> _postMessage(String content) async {
-    if (!kDiscordWebhookUrl.startsWith('http')) {
-      return;
-    }
-    if (kDiscordWebhookUrl.contains('example.com')) {
-      return;
-    }
-
-    HttpClient? client;
+  Future<void> _sendNotification({
+    required String type,
+    String? userName,
+    String? appName,
+    String? appDescription,
+    String? playUrl,
+    String? message,
+  }) async {
     try {
-      client = HttpClient();
-      final request = await client.postUrl(Uri.parse(kDiscordWebhookUrl));
-      request.headers.contentType = ContentType.json;
-      request.write(jsonEncode({'content': content}));
-      final response = await request.close();
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        debugPrint('Discord webhook failed: ${response.statusCode}');
+      final callable = _functions.httpsCallable('sendDiscordNotification');
+      final response = await callable.call(<String, dynamic>{
+        'type': type,
+        ...?userName == null ? null : {'userName': userName},
+        ...?appName == null ? null : {'appName': appName},
+        ...?appDescription == null ? null : {'appDescription': appDescription},
+        ...?playUrl == null ? null : {'playUrl': playUrl},
+        ...?message == null ? null : {'message': message},
+      });
+
+      final data = response.data;
+      if (data is! Map) {
+        debugPrint('Discord callable invalid response');
+        return;
       }
+      final ok = data['ok'] == true;
+      if (!ok) {
+        final error = data['error'];
+        debugPrint('Discord callable failed: $error');
+      }
+    } on FirebaseFunctionsException catch (e) {
+      debugPrint('Discord callable error: ${e.code} ${e.message}');
     } catch (e) {
-      debugPrint('Discord webhook error: $e');
-    } finally {
-      client?.close(force: true);
+      debugPrint('Discord callable unexpected error: $e');
     }
   }
 }
