@@ -8,7 +8,7 @@ plugins {
 }
 
 android {
-    namespace = "com.zerog.hiraku"
+    namespace = "com.yuga.hiraku"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.zerog.hiraku"
+        applicationId = "com.yuga.hiraku"
         minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode

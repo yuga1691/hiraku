@@ -1,4 +1,4 @@
-package com.zerog.hiraku
+package com.yuga.hiraku
 
 import io.flutter.embedding.android.FlutterActivity
 

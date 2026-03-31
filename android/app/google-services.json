@@ -7,6 +7,25 @@
   "client": [
     {
       "client_info": {
+        "mobilesdk_app_id": "1:316911139574:android:a3b0c73c7110866da80ad7",
+        "android_client_info": {
+          "package_name": "com.yuga.hiraku"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC9zFizSsmG9X0AyEF3frzVSUDLCs-513c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
         "mobilesdk_app_id": "1:316911139574:android:630a52490155d665a80ad7",
         "android_client_info": {
           "package_name": "com.zerog.hiraku"
