@@ -250,6 +250,8 @@ class FirestoreService {
       tx.update(targetRef, {
         'openedCount': FieldValue.increment(1),
         'openCountByDate.$dateKey': FieldValue.increment(1),
+        if (myActiveAppName.isNotEmpty)
+          'openCountByTesterAppName.$myActiveAppName': FieldValue.increment(1),
         'recentOpenLogs': _buildUpdatedRecentOpenLogs(
           target.recentOpenLogs,
           dateKey: dateKey,
@@ -342,6 +344,8 @@ class FirestoreService {
       tx.update(targetRef, {
         'openedCount': FieldValue.increment(1),
         'openCountByDate.$dateKey': FieldValue.increment(1),
+        if (myActiveAppName.isNotEmpty)
+          'openCountByTesterAppName.$myActiveAppName': FieldValue.increment(1),
         'recentOpenLogs': _buildUpdatedRecentOpenLogs(
           target.recentOpenLogs,
           dateKey: dateKey,

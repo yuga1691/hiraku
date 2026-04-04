@@ -157,55 +157,66 @@ class _MyPageScreenState extends State<MyPageScreen> {
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            StreamBuilder<List<TestingModel>>(
-              stream: _firestoreService.watchTestingHistory(userId),
+            StreamBuilder<AppModel?>(
+              stream: _firestoreService.watchMyActiveApp(userId),
               builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Padding(
-                    padding: EdgeInsets.all(8),
-                    child: CircularProgressIndicator(),
-                  );
-                }
-                final items = snapshot.data ?? [];
-                if (items.isEmpty) {
-                  return const EmptyState(
-                    title: '\u5c65\u6b74\u304c\u3042\u308a\u307e\u305b\u3093',
-                    message:
-                        '\u30c6\u30b9\u30c8\u3057\u305f\u30a2\u30d7\u30ea\u304c\u3053\u3053\u306b\u8868\u793a\u3055\u308c\u307e\u3059\u3002',
-                  );
-                }
-                return Column(
-                  children: items
-                      .map(
-                        (item) => ListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: Wrap(
-                            spacing: 4,
-                            runSpacing: 2,
-                            children: [
-                              Text(item.name),
-                              if (item.isEndedByDeveloper)
-                                Text(
-                                  '（テスト終了）',
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.error,
-                                    fontSize: 12,
-                                  ),
+                final myApp = snapshot.data;
+                final openedByTesterAppName = myApp?.openCountByTesterAppName ?? {};
+                return StreamBuilder<List<TestingModel>>(
+                  stream: _firestoreService.watchTestingHistory(userId),
+                  builder: (context, historySnapshot) {
+                    if (historySnapshot.connectionState == ConnectionState.waiting) {
+                      return const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+                    final items = historySnapshot.data ?? [];
+                    if (items.isEmpty) {
+                      return const EmptyState(
+                        title: '\u5c65\u6b74\u304c\u3042\u308a\u307e\u305b\u3093',
+                        message:
+                            '\u30c6\u30b9\u30c8\u3057\u305f\u30a2\u30d7\u30ea\u304c\u3053\u3053\u306b\u8868\u793a\u3055\u308c\u307e\u3059\u3002',
+                      );
+                    }
+                    return Column(
+                      children: items
+                          .map(
+                            (item) {
+                              final openCountByOtherToMe =
+                                  openedByTesterAppName[item.name] ?? 0;
+                              return ListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: Wrap(
+                                  spacing: 4,
+                                  runSpacing: 2,
+                                  children: [
+                                    Text(item.name),
+                                    if (item.isEndedByDeveloper)
+                                      Text(
+                                        '（テスト終了）',
+                                        style: TextStyle(
+                                          color: Theme.of(context).colorScheme.error,
+                                          fontSize: 12,
+                                        ),
+                                      ),
+                                  ],
                                 ),
-                            ],
-                          ),
-                          subtitle: Text(
-                            'Open\u56de\u6570: ${item.openCountByMe}'
-                            '${item.lastOpenedAt == null ? '' : ' / \u6700\u7d42: ${_dateFormat.format(item.lastOpenedAt!)}'}',
-                          ),
-                          onTap: () => _openTestedApp(item),
-                          trailing: FilledButton.tonal(
-                            onPressed: () => _openTestedApp(item),
-                            child: const Text('\u958b\u304f'),
-                          ),
-                        ),
-                      )
-                      .toList(),
+                                subtitle: Text(
+                                  'あなた→相手: ${item.openCountByMe}回 / 相手→あなた: ${openCountByOtherToMe}回'
+                                  '${item.lastOpenedAt == null ? '' : '\n最終: ${_dateFormat.format(item.lastOpenedAt!)}'}',
+                                ),
+                                onTap: () => _openTestedApp(item),
+                                trailing: FilledButton.tonal(
+                                  onPressed: () => _openTestedApp(item),
+                                  child: const Text('\u958b\u304f'),
+                                ),
+                              );
+                            },
+                          )
+                          .toList(),
+                    );
+                  },
                 );
               },
             ),
