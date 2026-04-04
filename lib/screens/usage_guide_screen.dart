@@ -38,12 +38,12 @@ class UsageGuideScreen extends StatelessWidget {
       body: '過去自分のアプリが何回開かれたかは，マイページから確認することができます！',
       assetPath: 'assets/guide/3-5.jpg',
     ),
-    UsageHelpSection(
-      title: 'APPENDIX: さらなる開発を行いたい方，フィードバックが欲しい方へ',
-      body:
-          'マイページから開発者が集まるDiscordコミュニティに参加することができます.\nDiscordに参加することで，アプリをリリースした際に，あなたのアプリが自動的に宣伝されたり，あなたのアプリをテストしてくれる心強い仲間を確認することができます！\n自由に話せるスペースもよういしているので，ぜひご参加ください！',
-      assetPath: 'assets/guide/3-6.jpg',
-    ),
+    //UsageHelpSection(
+      //title: 'APPENDIX: さらなる開発を行いたい方，フィードバックが欲しい方へ',
+      //body:
+        //  'マイページから開発者が集まるDiscordコミュニティに参加することができます.\nDiscordに参加することで，アプリをリリースした際に，あなたのアプリが自動的に宣伝されたり，あなたのアプリをテストしてくれる心強い仲間を確認することができます！\n自由に話せるスペースもよういしているので，ぜひご参加ください！',
+      //assetPath: 'assets/guide/3-6.jpg',
+    //),
   ];
 
   @override

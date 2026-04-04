@@ -1,4 +1,6 @@
-﻿import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
+
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
@@ -46,7 +48,11 @@ class FirestoreService {
         return null;
       }
       final doc = snapshot.docs.first;
-      return AppModel.fromMap(doc.id, doc.data());
+      final app = AppModel.fromMap(doc.id, doc.data());
+      if (_hasExpiredRecentOpenLogs(app.recentOpenLogs)) {
+        unawaited(_pruneRecentOpenLogs(doc.reference, app.recentOpenLogs));
+      }
+      return app;
     });
   }
 
@@ -60,7 +66,15 @@ class FirestoreService {
       return null;
     }
     final doc = snapshot.docs.first;
-    return AppModel.fromMap(doc.id, doc.data());
+    final app = AppModel.fromMap(doc.id, doc.data());
+    if (_hasExpiredRecentOpenLogs(app.recentOpenLogs)) {
+      await _pruneRecentOpenLogs(doc.reference, app.recentOpenLogs);
+      final refreshed = await doc.reference.get();
+      if (refreshed.exists && refreshed.data() != null) {
+        return AppModel.fromMap(refreshed.id, refreshed.data()!);
+      }
+    }
+    return app;
   }
 
   Stream<List<AppModel>> watchAvailableApps() {
@@ -103,6 +117,8 @@ class FirestoreService {
       'remainingExposure': 10,
       'openedCount': 0,
       'openCountByDate': <String, int>{},
+      'openCountByTesterAppName': <String, int>{},
+      'recentOpenLogs': <Map<String, dynamic>>[],
       'createdAt': FieldValue.serverTimestamp(),
       'endedAt': null,
     });
@@ -204,6 +220,9 @@ class FirestoreService {
         .where('isActive', isEqualTo: true)
         .limit(1)
         .get();
+    final myActiveAppName = myActiveAppSnapshot.docs.isEmpty
+        ? ''
+        : (myActiveAppSnapshot.docs.first.data()['name'] ?? '') as String;
     final myActiveAppRef = myActiveAppSnapshot.docs.isEmpty
         ? null
         : myActiveAppSnapshot.docs.first.reference;
@@ -217,6 +236,7 @@ class FirestoreService {
         throw Exception('対象のアプリが見つかりません。');
       }
       final data = targetSnap.data()!;
+      final target = AppModel.fromMap(targetSnap.id, data);
       final isActive = (data['isActive'] ?? false) as bool;
       final remaining = (data['remainingExposure'] ?? 0) as int;
       final historySnap = await tx.get(historyRef);
@@ -230,6 +250,11 @@ class FirestoreService {
       tx.update(targetRef, {
         'openedCount': FieldValue.increment(1),
         'openCountByDate.$dateKey': FieldValue.increment(1),
+        'recentOpenLogs': _buildUpdatedRecentOpenLogs(
+          target.recentOpenLogs,
+          dateKey: dateKey,
+          testerAppName: myActiveAppName,
+        ),
         if (isFirstOpenByUser) 'remainingExposure': FieldValue.increment(-1),
       });
 
@@ -285,11 +310,15 @@ class FirestoreService {
         .where('isActive', isEqualTo: true)
         .limit(1)
         .get();
+    final myActiveAppName = myActiveAppSnapshot.docs.isEmpty
+        ? ''
+        : (myActiveAppSnapshot.docs.first.data()['name'] ?? '') as String;
     final myActiveAppRef = myActiveAppSnapshot.docs.isEmpty
         ? null
         : myActiveAppSnapshot.docs.first.reference;
 
-    final historyRef = _users.doc(currentUserId).collection('testing').doc(history.appId);
+    final historyRef =
+        _users.doc(currentUserId).collection('testing').doc(history.appId);
 
     await _db.runTransaction((tx) async {
       final targetSnap = await tx.get(targetRef);
@@ -297,6 +326,7 @@ class FirestoreService {
         throw Exception('対象のアプリが見つかりません。');
       }
       final data = targetSnap.data()!;
+      final target = AppModel.fromMap(targetSnap.id, data);
       final isActive = (data['isActive'] ?? false) as bool;
       final remaining = (data['remainingExposure'] ?? 0) as int;
 
@@ -312,6 +342,11 @@ class FirestoreService {
       tx.update(targetRef, {
         'openedCount': FieldValue.increment(1),
         'openCountByDate.$dateKey': FieldValue.increment(1),
+        'recentOpenLogs': _buildUpdatedRecentOpenLogs(
+          target.recentOpenLogs,
+          dateKey: dateKey,
+          testerAppName: myActiveAppName,
+        ),
         if (isFirstOpenByUser) 'remainingExposure': FieldValue.increment(-1),
       });
 
@@ -379,5 +414,59 @@ class FirestoreService {
       username: username,
       appName: appName,
     );
+  }
+
+  bool _hasExpiredRecentOpenLogs(List<AppOpenLogEntry> logs) {
+    final cutoff = _recentOpenLogCutoff();
+    return logs.any((entry) {
+      final date = _tryParseDateKey(entry.dateKey);
+      return date == null || date.isBefore(cutoff);
+    });
+  }
+
+  Future<void> _pruneRecentOpenLogs(
+    DocumentReference<Map<String, dynamic>> appRef,
+    List<AppOpenLogEntry> logs,
+  ) async {
+    await appRef.set({
+      'recentOpenLogs': _buildUpdatedRecentOpenLogs(logs),
+    }, SetOptions(merge: true));
+  }
+
+  List<Map<String, dynamic>> _buildUpdatedRecentOpenLogs(
+    List<AppOpenLogEntry> logs, {
+    String dateKey = '',
+    String testerAppName = '',
+  }) {
+    final cutoff = _recentOpenLogCutoff();
+    final filtered = logs.where((entry) {
+      final date = _tryParseDateKey(entry.dateKey);
+      return date != null && !date.isBefore(cutoff);
+    }).toList();
+    if (dateKey.isNotEmpty && testerAppName.isNotEmpty) {
+      filtered.add(
+        AppOpenLogEntry(
+          dateKey: dateKey,
+          testerAppName: testerAppName,
+        ),
+      );
+    }
+    return filtered.map((entry) => entry.toMap()).toList();
+  }
+
+  DateTime _recentOpenLogCutoff() {
+    final now = DateTime.now().toLocal();
+    return DateTime(now.year, now.month, now.day).subtract(
+      const Duration(days: 6),
+    );
+  }
+
+  DateTime? _tryParseDateKey(String dateKey) {
+    try {
+      final parsed = DateTime.parse(dateKey);
+      return DateTime(parsed.year, parsed.month, parsed.day);
+    } catch (_) {
+      return null;
+    }
   }
 }

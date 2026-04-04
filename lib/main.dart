@@ -1,5 +1,6 @@
-import 'package:firebase_core/firebase_core.dart';
+ï»¿import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -10,6 +11,7 @@ import 'services/onboarding_service.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+  await MobileAds.instance.initialize();
   runApp(const HirakuApp());
 }
 
@@ -174,7 +176,7 @@ class _RootGateState extends State<RootGate> {
         if (snapshot.hasError) {
           return Scaffold(
             body: Center(
-              child: Text('‰Šú‰»’†‚ÉƒGƒ‰[‚ª”­¶‚µ‚Ü‚µ‚½: ${snapshot.error}'),
+              child: Text('åˆæœŸåŒ–ä¸­ã«ã‚¨ãƒ©ãƒ¼ãŒç™ºç”Ÿã—ã¾ã—ãŸ: ${snapshot.error}'),
             ),
           );
         }
@@ -202,3 +204,4 @@ class _RootGateState extends State<RootGate> {
     await _firestoreService.ensureUserDoc(user.uid);
   }
 }
+

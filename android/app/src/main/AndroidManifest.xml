@@ -4,6 +4,10 @@
         android:label="hiraku"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <!-- Temporary test App ID for Google Mobile Ads SDK startup. -->
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-2825080143851134~8904607785" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
