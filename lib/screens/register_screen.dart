@@ -88,8 +88,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 12),
                 MyAppCard(app: myApp),
                 const SizedBox(height: 16),
+                OutlinedButton.icon(
+                  onPressed: _saving ? null : () => _showEditDialog(myApp),
+                  icon: const Icon(Icons.edit_outlined),
+                  label: const Text('説明・アイコンを編集'),
+                ),
+                const SizedBox(height: 12),
                 FilledButton(
-                  onPressed: () => _endApp(myApp.id),
+                  onPressed: _saving ? null : () => _endApp(myApp.id),
                   child: const Text('テストを終了'),
                 ),
                 const SizedBox(height: 12),
@@ -166,10 +172,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   }
 
   Future<void> _pickIcon() async {
-    final picked = await _picker.pickImage(source: ImageSource.gallery);
-    if (picked == null) return;
-    final bytes = await File(picked.path).readAsBytes();
-    setState(() => _iconBase64 = base64Encode(bytes));
+    final icon = await _pickIconBase64();
+    if (icon == null) return;
+    setState(() => _iconBase64 = icon);
   }
 
   Future<void> _register(String userId) async {
@@ -231,9 +236,136 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
+  Future<String?> _pickIconBase64() async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery);
+    if (picked == null) return null;
+    final bytes = await File(picked.path).readAsBytes();
+    return base64Encode(bytes);
+  }
+
+  Future<void> _showEditDialog(AppModel app) async {
+    final messageController = TextEditingController(text: app.message);
+    String? draftIconBase64 = app.iconBase64;
+    var dialogSaving = false;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: const Text('説明・アイコンを編集'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    TextField(
+                      controller: messageController,
+                      decoration: const InputDecoration(
+                        labelText: '説明（任意）',
+                        border: OutlineInputBorder(),
+                      ),
+                      maxLines: 2,
+                    ),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundImage:
+                              draftIconBase64 == null || draftIconBase64!.isEmpty
+                              ? null
+                              : MemoryImage(base64Decode(draftIconBase64!)),
+                          child: draftIconBase64 == null || draftIconBase64!.isEmpty
+                              ? const Icon(Icons.apps)
+                              : null,
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              FilledButton.tonal(
+                                onPressed: dialogSaving
+                                    ? null
+                                    : () async {
+                                        final picked = await _pickIconBase64();
+                                        if (picked == null) return;
+                                        setDialogState(() {
+                                          draftIconBase64 = picked;
+                                        });
+                                      },
+                                child: const Text('アイコンを選択'),
+                              ),
+                              const SizedBox(height: 4),
+                              TextButton(
+                                onPressed: dialogSaving
+                                    ? null
+                                    : () => setDialogState(() => draftIconBase64 = null),
+                                child: const Text('アイコンを削除'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: dialogSaving
+                      ? null
+                      : () => Navigator.of(dialogContext).pop(),
+                  child: const Text('キャンセル'),
+                ),
+                FilledButton(
+                  onPressed: dialogSaving
+                      ? null
+                      : () async {
+                          setDialogState(() => dialogSaving = true);
+                          setState(() => _saving = true);
+                          try {
+                            await _firestoreService.updateMyAppDetails(
+                              appId: app.id,
+                              message: messageController.text.trim(),
+                              iconBase64: draftIconBase64,
+                            );
+                            if (mounted) {
+                              Navigator.of(dialogContext).pop();
+                              _showSnack('説明・アイコンを更新しました。');
+                            }
+                          } catch (e) {
+                            _showSnack('更新に失敗しました: $e');
+                            setDialogState(() => dialogSaving = false);
+                          } finally {
+                            if (mounted) {
+                              setState(() => _saving = false);
+                            }
+                          }
+                        },
+                  child: dialogSaving
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('保存'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    messageController.dispose();
+  }
   void _showSnack(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
+
+

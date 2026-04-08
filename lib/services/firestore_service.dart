@@ -130,6 +130,17 @@ class FirestoreService {
     );
   }
 
+  Future<void> updateMyAppDetails({
+    required String appId,
+    required String message,
+    required String? iconBase64,
+  }) async {
+    await _apps.doc(appId).set({
+      'message': message,
+      'iconBase64': iconBase64,
+    }, SetOptions(merge: true));
+  }
+
   Future<void> endMyApp(String appId) async {
     final appSnapshot = await _apps.doc(appId).get();
     final appData = appSnapshot.data();
