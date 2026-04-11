@@ -92,6 +92,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
       }
       return SafeArea(
         top: false,
+        bottom: false,
         child: Container(
           width: double.infinity,
           height: _fallbackHeight,
@@ -105,6 +106,7 @@ class _BannerAdWidgetState extends State<BannerAdWidget> {
     try {
       return SafeArea(
         top: false,
+        bottom: false,
         child: Container(
           alignment: Alignment.center,
           width: bannerAd.size.width.toDouble(),
