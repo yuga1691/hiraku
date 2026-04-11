@@ -95,7 +95,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 12),
                 FilledButton(
-                  onPressed: _saving ? null : () => _endApp(myApp.id),
+                  onPressed: _saving
+                      ? null
+                      : () async {
+                          final confirmed = await _confirmEndApp();
+                          if (!confirmed) return;
+                          await _endApp(myApp.id);
+                        },
                   child: const Text('テストを終了'),
                 ),
                 const SizedBox(height: 12),
@@ -234,6 +240,27 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } catch (e) {
       _showSnack('終了に失敗しました: $e');
     }
+  }
+
+  Future<bool> _confirmEndApp() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('確認'),
+        content: const Text('本当に終了しますか？'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('終了する'),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
   }
 
   Future<String?> _pickIconBase64() async {
