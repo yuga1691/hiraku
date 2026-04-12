@@ -250,6 +250,11 @@ class FirestoreService {
       final target = AppModel.fromMap(targetSnap.id, data);
       final isActive = (data['isActive'] ?? false) as bool;
       final remaining = (data['remainingExposure'] ?? 0) as int;
+      final userSnap = await tx.get(userRef);
+      final testerNameRaw = (userSnap.data()?['username'] ?? '') as String;
+      final testerName = testerNameRaw.trim().isEmpty
+          ? '\u8ab0\u304b'
+          : testerNameRaw.trim();
       final historySnap = await tx.get(historyRef);
       final prevCount = historySnap.exists
           ? (historySnap.data()!['openCountByMe'] ?? 0) as int
@@ -292,6 +297,22 @@ class FirestoreService {
         'lastOpenedAt': FieldValue.serverTimestamp(),
         'isEndedByDeveloper': !isActive,
       });
+
+      if (isFirstOpenByUser &&
+          target.ownerUserId.isNotEmpty &&
+          target.ownerUserId != currentUserId) {
+        final notifyRef =
+            _users.doc(target.ownerUserId).collection('notifications').doc();
+        tx.set(notifyRef, {
+          'type': 'tester_joined',
+          'testerUserId': currentUserId,
+          'testerName': testerName,
+          'appId': target.id,
+          'appName': target.name,
+          'createdAt': FieldValue.serverTimestamp(),
+          'isNotified': false,
+        });
+      }
     });
 
     await _notifyTestJoinedIfOptedIn(

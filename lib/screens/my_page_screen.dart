@@ -6,6 +6,7 @@ import '../models/app_model.dart';
 import '../models/testing_model.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
+import '../services/local_notification_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/help_sheet.dart';
 import '../widgets/my_app_card.dart';
@@ -22,6 +23,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
   final DateFormat _dateFormat = DateFormat('yyyy/MM/dd HH:mm');
+  bool _requestingNotificationPermission = false;
 
   static const _helpSections = [
     UsageHelpSection(
@@ -95,6 +97,24 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   child: const Text(
                     '\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4',
                   ),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  '他の人があなたのアプリをダウンロードした際に，通知が来ます',
+                ),
+                const SizedBox(height: 8),
+                FilledButton.icon(
+                  onPressed: _requestingNotificationPermission
+                      ? null
+                      : _requestNotificationPermission,
+                  icon: _requestingNotificationPermission
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.notifications_active_outlined),
+                  label: const Text('通知を受け取る'),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(
@@ -375,6 +395,29 @@ class _MyPageScreenState extends State<MyPageScreen> {
       );
     }
   }
+
+  Future<void> _requestNotificationPermission() async {
+    if (_requestingNotificationPermission) return;
+    setState(() => _requestingNotificationPermission = true);
+    try {
+      final granted = await LocalNotificationService.instance
+          .requestPermission();
+      if (!mounted) return;
+      if (granted) {
+        _showSnack('通知を許可しました。');
+      } else {
+        _showSnack('通知が許可されませんでした。端末設定から許可してください。');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('通知権限の確認に失敗しました: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _requestingNotificationPermission = false);
+      }
+    }
+  }
+
   void _showSnack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(

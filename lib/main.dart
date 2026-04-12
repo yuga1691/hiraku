@@ -1,11 +1,14 @@
 ﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
+import 'services/app_notification_service.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
+import 'services/local_notification_service.dart';
 import 'services/onboarding_service.dart';
 
 Future<void> main() async {
@@ -162,11 +165,25 @@ class _RootGateState extends State<RootGate> {
   final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final OnboardingService _onboardingService = OnboardingService();
+  final AppNotificationService _appNotificationService = AppNotificationService();
+  late final Future<void> _initializationFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializationFuture = _initialize();
+  }
+
+  @override
+  void dispose() {
+    unawaited(_appNotificationService.stop());
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
-      future: _initialize(),
+      future: _initializationFuture,
       builder: (context, snapshot) {
         if (snapshot.connectionState != ConnectionState.done) {
           return const Scaffold(
@@ -202,6 +219,8 @@ class _RootGateState extends State<RootGate> {
   Future<void> _initialize() async {
     final user = await _authService.ensureSignedIn();
     await _firestoreService.ensureUserDoc(user.uid);
+    await LocalNotificationService.instance.initialize();
+    await _appNotificationService.startForUser(user.uid);
   }
 }
 
