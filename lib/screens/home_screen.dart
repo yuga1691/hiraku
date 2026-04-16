@@ -31,7 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
       bottomNavigationBar: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const BannerAdWidget(),
+          const BannerAdWidget(forceTestMode: true),
           Container(
             decoration: BoxDecoration(
               color: theme.colorScheme.surface.withOpacity(0.9),

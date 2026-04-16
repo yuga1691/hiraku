@@ -324,7 +324,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               controller: _usernameController,
               decoration: const InputDecoration(
                 labelText: 'ユーザー名',
-                hintText: '例: zero_g',
+                hintText: '例: 佐藤',
               ),
             ),
             const Spacer(),
