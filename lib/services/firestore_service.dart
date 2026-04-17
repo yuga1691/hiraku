@@ -82,11 +82,36 @@ class FirestoreService {
         .where('isActive', isEqualTo: true)
         .snapshots()
         .map(
-          (snapshot) => snapshot.docs
+          (snapshot) {
+            final apps = snapshot.docs
               .map((doc) => AppModel.fromMap(doc.id, doc.data()))
               .where((app) => app.remainingExposure > 0)
-              .toList(),
+              .toList();
+            apps.sort(_compareAvailableApps);
+            return apps;
+          },
         );
+  }
+
+  int _compareAvailableApps(AppModel a, AppModel b) {
+    final aBoost = a.isBoostActive;
+    final bBoost = b.isBoostActive;
+    if (aBoost != bBoost) {
+      return aBoost ? -1 : 1;
+    }
+    if (aBoost && bBoost) {
+      final aBoostMillis = a.boostUntil?.millisecondsSinceEpoch ?? 0;
+      final bBoostMillis = b.boostUntil?.millisecondsSinceEpoch ?? 0;
+      if (aBoostMillis != bBoostMillis) {
+        return bBoostMillis.compareTo(aBoostMillis);
+      }
+    }
+    final aCreated = a.createdAt?.millisecondsSinceEpoch ?? 0;
+    final bCreated = b.createdAt?.millisecondsSinceEpoch ?? 0;
+    if (aCreated != bCreated) {
+      return bCreated.compareTo(aCreated);
+    }
+    return a.id.compareTo(b.id);
   }
 
   Future<void> registerApp({
@@ -177,6 +202,38 @@ class FirestoreService {
       userId: ownerUserId,
       appName: appName,
     );
+  }
+
+  Future<void> startMyAppBoost({
+    required String userId,
+    Duration duration = const Duration(hours: 1),
+  }) async {
+    final snapshot = await _apps
+        .where('ownerUserId', isEqualTo: userId)
+        .where('isActive', isEqualTo: true)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isEmpty) {
+      throw Exception('先にマイページでアプリを登録してください。');
+    }
+
+    final appRef = snapshot.docs.first.reference;
+    await _db.runTransaction((tx) async {
+      final appSnap = await tx.get(appRef);
+      if (!appSnap.exists) {
+        throw Exception('アプリ情報が見つかりません。');
+      }
+      final data = appSnap.data()!;
+      final now = DateTime.now();
+      final currentBoostUntil = (data['boostUntil'] as dynamic)?.toDate();
+      final base = currentBoostUntil is DateTime && currentBoostUntil.isAfter(now)
+          ? currentBoostUntil
+          : now;
+      final nextBoostUntil = base.add(duration);
+      tx.set(appRef, {
+        'boostUntil': Timestamp.fromDate(nextBoostUntil),
+      }, SetOptions(merge: true));
+    });
   }
 
   Stream<List<TestingModel>> watchTestingHistory(String userId) {

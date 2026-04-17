@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../models/app_model.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
+import '../services/rewarded_ad_service.dart';
 import '../widgets/app_card.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/help_sheet.dart';
@@ -18,10 +19,12 @@ class TestScreen extends StatefulWidget {
 class _TestScreenState extends State<TestScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
+  final RewardedAdService _rewardedAdService = RewardedAdService();
   final Set<String> _loadingAppIds = {};
   String? _pendingUserId;
   AppModel? _pendingInstallApp;
   bool _isInstallConfirmDialogShowing = false;
+  bool _isShowingBoostAd = false;
 
   static const _helpSections = [
     UsageHelpSection(
@@ -76,7 +79,26 @@ class _TestScreenState extends State<TestScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('テスト'),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('テスト'),
+            const SizedBox(width: 10),
+            OutlinedButton(
+              onPressed: _isShowingBoostAd
+                  ? null
+                  : () => _showBoostActionDialog(user.uid),
+              style: OutlinedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                visualDensity: VisualDensity.compact,
+              ),
+              child: const Text('自分のアプリをブースト'),
+            ),
+          ],
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
@@ -260,6 +282,51 @@ class _TestScreenState extends State<TestScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showBoostActionDialog(String userId) async {
+    final shouldBoost = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        content: const Text('広告を見ることで1時間自分のアプリの表示を上に押し上げることができます'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('キャンセル'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('ブースト'),
+          ),
+        ],
+      ),
+    );
+    if (shouldBoost == true) {
+      await _startBoostFlow(userId);
+    }
+  }
+
+  Future<void> _startBoostFlow(String userId) async {
+    if (_isShowingBoostAd) return;
+    setState(() => _isShowingBoostAd = true);
+    try {
+      final rewarded = await _rewardedAdService.showBoostRewardedAd();
+      if (!mounted) return;
+      if (!rewarded) {
+        _showSnack('広告の視聴が完了しなかったため、ブーストは適用されませんでした。');
+        return;
+      }
+      await _firestoreService.startMyAppBoost(userId: userId);
+      if (!mounted) return;
+      _showSnack('1時間ブーストを適用しました。');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('ブーストの適用に失敗しました: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _isShowingBoostAd = false);
+      }
+    }
   }
 }
 

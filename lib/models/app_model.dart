@@ -37,6 +37,7 @@ class AppModel {
     required this.openCountByDate,
     required this.openCountByTesterAppName,
     required this.recentOpenLogs,
+    required this.boostUntil,
     required this.createdAt,
     required this.endedAt,
   });
@@ -54,8 +55,15 @@ class AppModel {
   final Map<String, int> openCountByDate;
   final Map<String, int> openCountByTesterAppName;
   final List<AppOpenLogEntry> recentOpenLogs;
+  final DateTime? boostUntil;
   final DateTime? createdAt;
   final DateTime? endedAt;
+
+  bool get isBoostActive {
+    final until = boostUntil;
+    if (until == null) return false;
+    return until.isAfter(DateTime.now());
+  }
 
   factory AppModel.fromMap(String id, Map<String, dynamic> data) {
     return AppModel(
@@ -74,6 +82,7 @@ class AppModel {
         data['openCountByTesterAppName'],
       ),
       recentOpenLogs: _parseRecentOpenLogs(data['recentOpenLogs']),
+      boostUntil: (data['boostUntil'] as dynamic)?.toDate(),
       createdAt: (data['createdAt'] as dynamic)?.toDate(),
       endedAt: (data['endedAt'] as dynamic)?.toDate(),
     );
@@ -116,6 +125,7 @@ class AppModel {
       'openCountByDate': openCountByDate,
       'openCountByTesterAppName': openCountByTesterAppName,
       'recentOpenLogs': recentOpenLogs.map((entry) => entry.toMap()).toList(),
+      'boostUntil': boostUntil,
       'createdAt': createdAt,
       'endedAt': endedAt,
     };
