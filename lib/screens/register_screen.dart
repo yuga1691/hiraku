@@ -144,7 +144,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: _messageController,
           decoration: const InputDecoration(
-            labelText: 'コメント（任意）',
+            labelText: 'コメント',
             border: OutlineInputBorder(),
           ),
           maxLines: 2,
@@ -187,7 +187,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     final name = _nameController.text.trim();
     final playUrl = _urlController.text.trim();
     final message = _messageController.text.trim();
-    if (name.isEmpty || playUrl.isEmpty) {
+    if (name.isEmpty || playUrl.isEmpty || message.isEmpty) {
       _showSnack('必須項目を入力してください。');
       return;
     }

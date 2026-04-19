@@ -10,15 +10,31 @@ class AppCard extends StatelessWidget {
     required this.app,
     required this.onOpen,
     required this.loading,
+    this.isOwnerApp = false,
   });
 
   final AppModel app;
   final VoidCallback onOpen;
   final bool loading;
+  final bool isOwnerApp;
 
   @override
   Widget build(BuildContext context) {
+    final isOpenDisabled = loading || isOwnerApp;
     return Card(
+      elevation: isOwnerApp ? 6 : null,
+      shadowColor: isOwnerApp
+          ? Colors.lightBlueAccent.withOpacity(0.55)
+          : null,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: isOwnerApp
+            ? BorderSide(
+                color: Colors.lightBlueAccent.withOpacity(0.9),
+                width: 2,
+              )
+            : BorderSide.none,
+      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(
@@ -50,14 +66,14 @@ class AppCard extends StatelessWidget {
                     ),
                   const SizedBox(height: 12),
                   FilledButton(
-                    onPressed: loading ? null : onOpen,
+                    onPressed: isOpenDisabled ? null : onOpen,
                     child: loading
                         ? const SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : const Text('アプリを開く'),
+                        : Text(isOwnerApp ? '自分のアプリ' : 'アプリを開く'),
                   ),
                 ],
               ),

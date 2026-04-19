@@ -138,8 +138,11 @@ class _TestScreenState extends State<TestScreen> {
                   .map((item) => item.appId)
                   .toSet();
               final visibleApps = apps
-                  .where((app) => app.ownerUserId != user.uid)
-                  .where((app) => !testedIds.contains(app.id))
+                  .where(
+                    (app) =>
+                        app.ownerUserId == user.uid ||
+                        !testedIds.contains(app.id),
+                  )
                   .toList();
               if (visibleApps.isEmpty) {
                 return const EmptyState(
@@ -153,10 +156,12 @@ class _TestScreenState extends State<TestScreen> {
                 separatorBuilder: (_, __) => const SizedBox(height: 12),
                 itemBuilder: (context, index) {
                   final app = visibleApps[index];
+                  final isOwnerApp = app.ownerUserId == user.uid;
                   final loading = _loadingAppIds.contains(app.id);
                   return AppCard(
                     app: app,
                     loading: loading,
+                    isOwnerApp: isOwnerApp,
                     onOpen: () => _showAppDetails(user.uid, app),
                   );
                 },
