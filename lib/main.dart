@@ -6,6 +6,7 @@ import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'services/app_notification_service.dart';
+import 'services/analytics_service.dart';
 import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'services/local_notification_service.dart';
@@ -163,6 +164,7 @@ class RootGate extends StatefulWidget {
 
 class _RootGateState extends State<RootGate> {
   final AuthService _authService = AuthService();
+  final AnalyticsService _analyticsService = AnalyticsService.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final OnboardingService _onboardingService = OnboardingService();
   final AppNotificationService _appNotificationService = AppNotificationService();
@@ -218,6 +220,7 @@ class _RootGateState extends State<RootGate> {
 
   Future<void> _initialize() async {
     final user = await _authService.ensureSignedIn();
+    await _analyticsService.initialize(userId: user.uid);
     await _firestoreService.ensureUserDoc(user.uid);
     await LocalNotificationService.instance.initialize();
     await _appNotificationService.startForUser(user.uid);

@@ -15,8 +15,11 @@ class LocalNotificationService {
     const initializationSettingsAndroid = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
+    const initializationSettingsDarwin = DarwinInitializationSettings();
     const initializationSettings = InitializationSettings(
       android: initializationSettingsAndroid,
+      iOS: initializationSettingsDarwin,
+      macOS: initializationSettingsDarwin,
     );
     await _plugin.initialize(initializationSettings);
     final androidPlugin = _plugin
@@ -41,9 +44,35 @@ class LocalNotificationService {
     final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
+    >();
+    final androidGranted = await androidPlugin?.requestNotificationsPermission();
+    if (androidGranted == true) {
+      return true;
+    }
+
+    final iosPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          IOSFlutterLocalNotificationsPlugin
         >();
-    final granted = await androidPlugin?.requestNotificationsPermission();
-    return granted ?? false;
+    final iosGranted = await iosPlugin?.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    if (iosGranted == true) {
+      return true;
+    }
+
+    final macosPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          MacOSFlutterLocalNotificationsPlugin
+        >();
+    final macosGranted = await macosPlugin?.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
+    return macosGranted ?? false;
   }
 
   Future<void> showTesterJoinedNotification({

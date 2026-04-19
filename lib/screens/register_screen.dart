@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../models/app_model.dart';
+import '../services/analytics_service.dart';
 import '../services/firestore_service.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/help_sheet.dart';
@@ -19,6 +20,7 @@ class RegisterScreen extends StatefulWidget {
 }
 
 class _RegisterScreenState extends State<RegisterScreen> {
+  final AnalyticsService _analyticsService = AnalyticsService.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
@@ -206,6 +208,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         message: message,
         iconBase64: _iconBase64,
       );
+      await _analyticsService.logAppRegisterCompleted(packageName: packageName);
       _nameController.clear();
       _urlController.clear();
       _messageController.clear();

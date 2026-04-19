@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../constants.dart';
 import '../services/auth_service.dart';
+import '../services/analytics_service.dart';
 import '../services/firestore_service.dart';
 import '../services/onboarding_service.dart';
 import '../widgets/cyber_background.dart';
@@ -22,6 +23,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final PageController _pageController = PageController();
   final TextEditingController _usernameController = TextEditingController();
   final AuthService _authService = AuthService();
+  final AnalyticsService _analyticsService = AnalyticsService.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final OnboardingService _onboardingService = OnboardingService();
 
@@ -388,6 +390,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
       await _firestoreService.ensureUserDoc(user.uid);
       await _firestoreService.updateUsername(user.uid, username);
       await _onboardingService.markCompleted();
+      await _analyticsService.logOnboardingCompleted();
       if (!mounted) return;
       Navigator.of(
         context,

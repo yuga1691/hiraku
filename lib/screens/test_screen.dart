@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_model.dart';
+import '../services/analytics_service.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
 import '../services/rewarded_ad_service.dart';
@@ -17,6 +18,7 @@ class TestScreen extends StatefulWidget {
 }
 
 class _TestScreenState extends State<TestScreen> {
+  final AnalyticsService _analyticsService = AnalyticsService.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
   final RewardedAdService _rewardedAdService = RewardedAdService();
@@ -175,6 +177,11 @@ class _TestScreenState extends State<TestScreen> {
 
   Future<void> _showAppDetails(String userId, AppModel app) async {
     if (!mounted) return;
+    await _analyticsService.logTestAppDetailOpened(
+      appId: app.id,
+      packageName: app.packageName,
+      targetUserId: app.ownerUserId,
+    );
     await showDialog<void>(
       context: context,
       builder: (context) {
@@ -222,6 +229,12 @@ class _TestScreenState extends State<TestScreen> {
         _pendingUserId = null;
         _pendingInstallApp = null;
         _showSnack('ストアを開けませんでした。URLを確認してください。');
+      } else {
+        await _analyticsService.logTestStoreOpened(
+          appId: app.id,
+          packageName: app.packageName,
+          targetUserId: app.ownerUserId,
+        );
       }
     } catch (e) {
       _pendingUserId = null;
@@ -275,6 +288,11 @@ class _TestScreenState extends State<TestScreen> {
         currentUserId: userId,
         targetApp: app,
       );
+      await _analyticsService.logTestCompleted(
+        appId: app.id,
+        packageName: app.packageName,
+        targetUserId: app.ownerUserId,
+      );
       if (!mounted) return;
       _showSnack('テスト履歴に追加しました。');
     } catch (e) {
@@ -322,6 +340,7 @@ class _TestScreenState extends State<TestScreen> {
         return;
       }
       await _firestoreService.startMyAppBoost(userId: userId);
+      await _analyticsService.logBoostActivated();
       if (!mounted) return;
       _showSnack('1時間ブーストを適用しました。');
     } catch (e) {

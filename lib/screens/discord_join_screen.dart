@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../constants.dart';
+import '../services/analytics_service.dart';
 import '../services/discord_webhook_service.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
@@ -14,6 +15,7 @@ class DiscordJoinScreen extends StatefulWidget {
 }
 
 class _DiscordJoinScreenState extends State<DiscordJoinScreen> {
+  final AnalyticsService _analyticsService = AnalyticsService.instance;
   final LauncherService _launcherService = LauncherService();
   final FirestoreService _firestoreService = FirestoreService();
   final DiscordWebhookService _discordWebhookService = DiscordWebhookService();
@@ -128,6 +130,7 @@ class _DiscordJoinScreenState extends State<DiscordJoinScreen> {
     _waitingConfirmation = false;
 
     if (joined == true) {
+      await _analyticsService.logDiscordJoinConfirmYes();
       await _confirmJoined();
     }
   }

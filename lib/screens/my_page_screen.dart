@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
+import '../services/analytics_service.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
 import '../services/local_notification_service.dart';
@@ -20,6 +21,7 @@ class MyPageScreen extends StatefulWidget {
 }
 
 class _MyPageScreenState extends State<MyPageScreen> {
+  final AnalyticsService _analyticsService = AnalyticsService.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
   final DateFormat _dateFormat = DateFormat('yyyy/MM/dd HH:mm');
@@ -404,6 +406,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           .requestPermission();
       if (!mounted) return;
       if (granted) {
+        await _analyticsService.logNotificationPermissionGranted();
         _showSnack('通知を許可しました。');
       } else {
         _showSnack('通知が許可されませんでした。端末設定から許可してください。');
