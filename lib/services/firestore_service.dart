@@ -6,6 +6,18 @@ import '../models/app_model.dart';
 import '../models/testing_model.dart';
 import 'discord_webhook_service.dart';
 
+class UserDisplayInfo {
+  UserDisplayInfo({
+    required this.username,
+    required this.hasInitialUserBadge,
+    required this.hasOfficialBadge,
+  });
+
+  final String username;
+  final bool hasInitialUserBadge;
+  final bool hasOfficialBadge;
+}
+
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final DiscordWebhookService _discordWebhookService = DiscordWebhookService();
@@ -22,6 +34,8 @@ class FirestoreService {
         'username': '',
         'createdAt': FieldValue.serverTimestamp(),
         'testedCountTotal': 0,
+        'hasInitialUserBadge': false,
+        'hasOfficialBadge': false,
       });
     }
   }
@@ -256,6 +270,17 @@ class FirestoreService {
       return 'ユーザー';
     }
     return username;
+  }
+
+  Future<UserDisplayInfo> fetchUserDisplayInfo(String userId) async {
+    final snapshot = await _users.doc(userId).get();
+    final data = snapshot.data();
+    final usernameRaw = (data?['username'] ?? '') as String;
+    return UserDisplayInfo(
+      username: usernameRaw.isEmpty ? 'ユーザー' : usernameRaw,
+      hasInitialUserBadge: (data?['hasInitialUserBadge'] ?? false) as bool,
+      hasOfficialBadge: (data?['hasOfficialBadge'] ?? false) as bool,
+    );
   }
 
   Future<void> deleteUserData(String userId) async {

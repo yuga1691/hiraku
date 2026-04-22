@@ -23,6 +23,8 @@ class _TestScreenState extends State<TestScreen> {
   final LauncherService _launcherService = LauncherService();
   final RewardedAdService _rewardedAdService = RewardedAdService();
   final Set<String> _loadingAppIds = {};
+  final Set<String> _loadingOwnerUserIds = {};
+  final Map<String, UserDisplayInfo> _ownerDisplayInfoByUserId = {};
   String? _pendingUserId;
   AppModel? _pendingInstallApp;
   bool _isInstallConfirmDialogShowing = false;
@@ -146,6 +148,9 @@ class _TestScreenState extends State<TestScreen> {
                         !testedIds.contains(app.id),
                   )
                   .toList();
+              _prefetchOwnerUsernames(
+                visibleApps.map((app) => app.ownerUserId).toSet(),
+              );
               if (visibleApps.isEmpty) {
                 return const EmptyState(
                   title: 'テストできるアプリがありません',
@@ -164,6 +169,17 @@ class _TestScreenState extends State<TestScreen> {
                     app: app,
                     loading: loading,
                     isOwnerApp: isOwnerApp,
+                    ownerUsername:
+                        _ownerDisplayInfoByUserId[app.ownerUserId]?.username ??
+                        '読み込み中...',
+                    hasInitialUserBadge:
+                        _ownerDisplayInfoByUserId[app.ownerUserId]
+                            ?.hasInitialUserBadge ??
+                        false,
+                    hasOfficialBadge:
+                        _ownerDisplayInfoByUserId[app.ownerUserId]
+                            ?.hasOfficialBadge ??
+                        false,
                     onOpen: () => _showAppDetails(user.uid, app),
                   );
                 },
@@ -173,6 +189,39 @@ class _TestScreenState extends State<TestScreen> {
         },
       ),
     );
+  }
+
+  void _prefetchOwnerUsernames(Set<String> ownerUserIds) {
+    for (final ownerUserId in ownerUserIds) {
+      if (ownerUserId.isEmpty ||
+          _ownerDisplayInfoByUserId.containsKey(ownerUserId) ||
+          _loadingOwnerUserIds.contains(ownerUserId)) {
+        continue;
+      }
+      _loadOwnerUsername(ownerUserId);
+    }
+  }
+
+  Future<void> _loadOwnerUsername(String userId) async {
+    _loadingOwnerUserIds.add(userId);
+    try {
+      final displayInfo = await _firestoreService.fetchUserDisplayInfo(userId);
+      if (!mounted) return;
+      setState(() {
+        _ownerDisplayInfoByUserId[userId] = displayInfo;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _ownerDisplayInfoByUserId[userId] = UserDisplayInfo(
+          username: 'ユーザー',
+          hasInitialUserBadge: false,
+          hasOfficialBadge: false,
+        );
+      });
+    } finally {
+      _loadingOwnerUserIds.remove(userId);
+    }
   }
 
   Future<void> _showAppDetails(String userId, AppModel app) async {

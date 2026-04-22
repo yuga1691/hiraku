@@ -1,4 +1,6 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -77,6 +79,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
         final data = snapshot.data?.data() ?? {};
         final username = (data['username'] ?? '') as String;
         final testedCount = (data['testedCountTotal'] ?? 0) as int;
+        final hasInitialUserBadge =
+            (data['hasInitialUserBadge'] ?? false) as bool;
+        final hasOfficialBadge = (data['hasOfficialBadge'] ?? false) as bool;
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -88,8 +93,30 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  '\u30e6\u30fc\u30b6\u30fc\u540d: ${username.isEmpty ? '\u672a\u8a2d\u5b9a' : username}',
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '\u30e6\u30fc\u30b6\u30fc\u540d: ${username.isEmpty ? '\u672a\u8a2d\u5b9a' : username}',
+                      ),
+                    ),
+                    if (hasInitialUserBadge) ...[
+                      const SizedBox(width: 6),
+                      _PressHintBadge(
+                        icon: Icons.rocket_launch,
+                        color: Theme.of(context).colorScheme.primary,
+                        hint: 'HIRAKUの開発に協力していただいた方です',
+                      ),
+                    ],
+                    if (hasOfficialBadge) ...[
+                      const SizedBox(width: 4),
+                      _PressHintBadge(
+                        icon: Icons.workspace_premium,
+                        color: Theme.of(context).colorScheme.primary,
+                        hint: '本アプリ開発者です',
+                      ),
+                    ],
+                  ],
                 ),
                 const SizedBox(height: 4),
                 Text('あなたがテストした回数: $testedCount'),
@@ -471,3 +498,97 @@ class _AccountDeletedNoticeScreen extends StatelessWidget {
   }
 }
 
+
+
+class _PressHintBadge extends StatefulWidget {
+  const _PressHintBadge({
+    required this.icon,
+    required this.color,
+    required this.hint,
+  });
+
+  final IconData icon;
+  final Color color;
+  final String hint;
+
+  @override
+  State<_PressHintBadge> createState() => _PressHintBadgeState();
+}
+
+class _PressHintBadgeState extends State<_PressHintBadge> {
+  bool _showHint = false;
+  Timer? _hideTimer;
+
+  void _setHintVisible(bool visible) {
+    _hideTimer?.cancel();
+    if (_showHint == visible) return;
+    setState(() => _showHint = visible);
+  }
+
+  void _scheduleHideHint() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(milliseconds: 300), () {
+      if (!mounted) return;
+      _setHintVisible(false);
+    });
+  }
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 16,
+      height: 16,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Positioned.fill(
+            child: GestureDetector(
+              behavior: HitTestBehavior.translucent,
+              onTapDown: (_) => _setHintVisible(true),
+              onTapUp: (_) => _scheduleHideHint(),
+              onTapCancel: _scheduleHideHint,
+              child: Icon(
+                widget.icon,
+                size: 16,
+                color: widget.color,
+              ),
+            ),
+          ),
+          if (_showHint)
+            Positioned(
+              bottom: 22,
+              right: -8,
+              child: Material(
+                color: Colors.black.withOpacity(0.88),
+                elevation: 4,
+                borderRadius: BorderRadius.circular(8),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 220),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    child: Text(
+                      widget.hint,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        height: 1.2,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
