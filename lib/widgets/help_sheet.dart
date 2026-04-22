@@ -133,22 +133,27 @@ class _HelpExpansionTileState extends State<_HelpExpansionTile> {
           color: theme.colorScheme.primary.withOpacity(0.28),
         ),
       ),
-      child: ExpansionTile(
-        dense: true,
-        onExpansionChanged: (value) {
-          setState(() => _expanded = value);
-        },
-        tilePadding: const EdgeInsets.symmetric(horizontal: 12),
-        childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        title: Text(section.title),
-        trailing: AnimatedRotation(
-          duration: const Duration(milliseconds: 200),
-          turns: _expanded ? 0.25 : 0,
-          child: const Icon(Icons.chevron_right),
+      child: Theme(
+        data: theme.copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          dense: true,
+          shape: const Border(),
+          collapsedShape: const Border(),
+          onExpansionChanged: (value) {
+            setState(() => _expanded = value);
+          },
+          tilePadding: const EdgeInsets.symmetric(horizontal: 12),
+          childrenPadding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+          title: Text(section.title),
+          trailing: AnimatedRotation(
+            duration: const Duration(milliseconds: 200),
+            turns: _expanded ? 0.25 : 0,
+            child: const Icon(Icons.chevron_right),
+          ),
+          children: [
+            ..._buildSectionContents(context, section.resolvedContents),
+          ],
         ),
-        children: [
-          ..._buildSectionContents(context, section.resolvedContents),
-        ],
       ),
     );
   }
