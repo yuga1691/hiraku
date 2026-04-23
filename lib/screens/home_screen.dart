@@ -1,5 +1,7 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 
+import '../services/firestore_service.dart';
 import '../widgets/banner_ad_widget.dart';
 import 'my_page_screen.dart';
 import 'register_screen.dart';
@@ -15,6 +17,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  final FirestoreService _firestoreService = FirestoreService();
 
   final List<Widget> _pages = const [
     TestScreen(),
@@ -26,6 +29,7 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final currentUser = FirebaseAuth.instance.currentUser;
     return Scaffold(
       body: _pages[_currentIndex],
       bottomNavigationBar: Column(
@@ -55,25 +59,31 @@ class _HomeScreenState extends State<HomeScreen> {
               onDestinationSelected: (index) {
                 setState(() => _currentIndex = index);
               },
-              destinations: const [
-                NavigationDestination(
+              destinations: [
+                const NavigationDestination(
                   icon: Icon(Icons.people_alt_outlined),
                   selectedIcon: Icon(Icons.people_alt),
                   label: 'テスト',
                 ),
-                NavigationDestination(
+                const NavigationDestination(
                   icon: Icon(Icons.app_registration_outlined),
                   selectedIcon: Icon(Icons.app_registration),
                   label: '登録',
                 ),
-                NavigationDestination(
+                const NavigationDestination(
                   icon: Icon(Icons.menu_book_outlined),
                   selectedIcon: Icon(Icons.menu_book),
                   label: '使い方',
                 ),
                 NavigationDestination(
-                  icon: Icon(Icons.person_outline),
-                  selectedIcon: Icon(Icons.person),
+                  icon: _buildMyPageNavIcon(
+                    selected: false,
+                    userId: currentUser?.uid,
+                  ),
+                  selectedIcon: _buildMyPageNavIcon(
+                    selected: true,
+                    userId: currentUser?.uid,
+                  ),
                   label: 'マイページ',
                 ),
               ],
@@ -81,6 +91,43 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildMyPageNavIcon({
+    required bool selected,
+    required String? userId,
+  }) {
+    final baseIcon = Icon(selected ? Icons.person : Icons.person_outline);
+    if (userId == null || userId.isEmpty) {
+      return baseIcon;
+    }
+    return StreamBuilder<int>(
+      stream: _firestoreService.watchAdminNotificationUnreadCount(userId),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+        if (unreadCount <= 0) {
+          return baseIcon;
+        }
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            baseIcon,
+            Positioned(
+              right: -2,
+              top: -1,
+              child: Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.error,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }

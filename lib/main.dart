@@ -11,6 +11,7 @@ import 'services/auth_service.dart';
 import 'services/firestore_service.dart';
 import 'services/local_notification_service.dart';
 import 'services/onboarding_service.dart';
+import 'services/push_notification_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -168,6 +169,8 @@ class _RootGateState extends State<RootGate> {
   final FirestoreService _firestoreService = FirestoreService();
   final OnboardingService _onboardingService = OnboardingService();
   final AppNotificationService _appNotificationService = AppNotificationService();
+  final PushNotificationService _pushNotificationService =
+      PushNotificationService.instance;
   late final Future<void> _initializationFuture;
 
   @override
@@ -179,6 +182,7 @@ class _RootGateState extends State<RootGate> {
   @override
   void dispose() {
     unawaited(_appNotificationService.stop());
+    unawaited(_pushNotificationService.stop());
     super.dispose();
   }
 
@@ -223,6 +227,7 @@ class _RootGateState extends State<RootGate> {
     await _analyticsService.initialize(userId: user.uid);
     await _firestoreService.ensureUserDoc(user.uid);
     await LocalNotificationService.instance.initialize();
+    await _pushNotificationService.startForUser(user.uid);
     await _appNotificationService.startForUser(user.uid);
   }
 }

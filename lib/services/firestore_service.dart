@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -142,7 +142,7 @@ class FirestoreService {
         .limit(1)
         .get();
     if (existing.docs.isNotEmpty) {
-      throw Exception('現在アクティブなアプリがあります。先に終了してください。');
+      throw Exception('An active app is already registered. End it first.');
     }
 
     await _apps.add({
@@ -228,14 +228,14 @@ class FirestoreService {
         .limit(1)
         .get();
     if (snapshot.docs.isEmpty) {
-      throw Exception('先にマイページでアプリを登録してください。');
+      throw Exception('No active app found for this user.');
     }
 
     final appRef = snapshot.docs.first.reference;
     await _db.runTransaction((tx) async {
       final appSnap = await tx.get(appRef);
       if (!appSnap.exists) {
-        throw Exception('アプリ情報が見つかりません。');
+        throw Exception('App not found.');
       }
       final data = appSnap.data()!;
       final now = DateTime.now();
@@ -261,6 +261,38 @@ class FirestoreService {
               .map((doc) => TestingModel.fromMap(doc.data()))
               .toList(),
         );
+  }
+
+  Stream<QuerySnapshot<Map<String, dynamic>>> watchAdminNotifications(
+    String userId,
+  ) {
+    return _users
+        .doc(userId)
+        .collection('adminNotifications')
+        .orderBy('createdAt', descending: true)
+        .snapshots();
+  }
+
+  Stream<int> watchAdminNotificationUnreadCount(String userId) {
+    return _users
+        .doc(userId)
+        .collection('adminNotifications')
+        .where('isRead', isEqualTo: false)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.length);
+  }
+
+  Future<void> markAdminNotificationAsRead({
+    required String userId,
+    required String notificationId,
+  }) async {
+    await _users.doc(userId).collection('adminNotifications').doc(notificationId).set(
+      {
+        'isRead': true,
+        'readAt': FieldValue.serverTimestamp(),
+      },
+      SetOptions(merge: true),
+    );
   }
 
   Future<String> fetchUsername(String userId) async {
@@ -326,7 +358,7 @@ class FirestoreService {
     await _db.runTransaction((tx) async {
       final targetSnap = await tx.get(targetRef);
       if (!targetSnap.exists) {
-        throw Exception('対象のアプリが見つかりません。');
+        throw Exception('Target app not found.');
       }
       final data = targetSnap.data()!;
       final target = AppModel.fromMap(targetSnap.id, data);
@@ -343,7 +375,7 @@ class FirestoreService {
           : 0;
       final isFirstOpenByUser = !historySnap.exists;
       if (isFirstOpenByUser && (!isActive || remaining <= 0)) {
-        throw Exception('このアプリは現在テスト対象外です。');
+        throw Exception('This app is no longer available for testing.');
       }
       tx.update(targetRef, {
         'openedCount': FieldValue.increment(1),
@@ -439,7 +471,7 @@ class FirestoreService {
     await _db.runTransaction((tx) async {
       final targetSnap = await tx.get(targetRef);
       if (!targetSnap.exists) {
-        throw Exception('対象のアプリが見つかりません。');
+        throw Exception('Target app not found.');
       }
       final data = targetSnap.data()!;
       final target = AppModel.fromMap(targetSnap.id, data);
@@ -452,7 +484,7 @@ class FirestoreService {
           : 0;
       final isFirstOpenByUser = !historySnap.exists;
       if (isFirstOpenByUser && (!isActive || remaining <= 0)) {
-        throw Exception('このアプリは現在テスト対象外です。');
+        throw Exception('This app is no longer available for testing.');
       }
 
       tx.update(targetRef, {
@@ -588,3 +620,5 @@ class FirestoreService {
     }
   }
 }
+
+

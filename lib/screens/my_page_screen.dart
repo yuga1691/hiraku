@@ -1,5 +1,6 @@
 ﻿import 'dart:async';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -46,14 +47,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: const Text('マイページ'),
+        title: _buildAppBarTitle(user.uid),
         actions: [
           IconButton(
             icon: const Icon(Icons.help_outline),
-            tooltip: '\u4f7f\u3044\u65b9\u3092\u898b\u308b',
+            tooltip: '使い方を見る',
             onPressed: () => showUsageHelpSheet(
               context,
-              title: '\u30de\u30a4\u30da\u30fc\u30b8\u306e\u4f7f\u3044\u65b9',
+              title: 'マイページの使い方',
               sections: _helpSections,
             ),
           ),
@@ -67,6 +68,211 @@ class _MyPageScreenState extends State<MyPageScreen> {
           _buildMyAppSection(user.uid),
           const SizedBox(height: 16),
           _buildTestingHistory(user.uid),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAppBarTitle(String userId) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Text('マイページ'),
+        const SizedBox(width: 6),
+        _buildAdminNotificationButton(userId),
+      ],
+    );
+  }
+
+  Widget _buildAdminNotificationButton(String userId) {
+    return StreamBuilder<int>(
+      stream: _firestoreService.watchAdminNotificationUnreadCount(userId),
+      builder: (context, snapshot) {
+        final unreadCount = snapshot.data ?? 0;
+        return Tooltip(
+          message: '運営からの通知ボックス',
+          child: InkWell(
+            borderRadius: BorderRadius.circular(999),
+            onTap: () => _openAdminNotificationBox(userId),
+            child: Padding(
+              padding: const EdgeInsets.all(6),
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Icon(
+                    Icons.campaign_outlined,
+                    size: 20,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
+                  if (unreadCount > 0)
+                    Positioned(
+                      right: -6,
+                      top: -6,
+                      child: Container(
+                        constraints: const BoxConstraints(minWidth: 16),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.error,
+                          borderRadius: BorderRadius.circular(999),
+                        ),
+                        child: Text(
+                          unreadCount > 99 ? '99+' : '$unreadCount',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openAdminNotificationBox(String userId) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+            child: SizedBox(
+              height: MediaQuery.of(context).size.height * 0.72,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '運営からの通知ボックス',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 8),
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: _firestoreService.watchAdminNotifications(userId),
+                      builder: (context, snapshot) {
+                        if (snapshot.hasError) {
+                          return const Center(
+                            child: Text('通知の取得に失敗しました。'),
+                          );
+                        }
+                        if (snapshot.connectionState == ConnectionState.waiting) {
+                          return const Center(child: CircularProgressIndicator());
+                        }
+                        final docs = snapshot.data?.docs ?? [];
+                        if (docs.isEmpty) {
+                          return const EmptyState(
+                            title: '通知はまだありません',
+                            message: '運営からのお知らせがここに表示されます。',
+                          );
+                        }
+                        return ListView.separated(
+                          itemCount: docs.length,
+                          separatorBuilder: (_, __) => const Divider(height: 1),
+                          itemBuilder: (context, index) {
+                            final doc = docs[index];
+                            final data = doc.data();
+                            final title = (data['title'] ?? 'お知らせ') as String;
+                            final body = (data['body'] ?? '') as String;
+                            final isRead = (data['isRead'] ?? false) as bool;
+                            final createdAtRaw = data['createdAt'];
+                            final createdAt = createdAtRaw is Timestamp
+                                ? createdAtRaw.toDate()
+                                : null;
+
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: Icon(
+                                isRead
+                                    ? Icons.mark_email_read_outlined
+                                    : Icons.mark_email_unread_outlined,
+                                color: isRead
+                                    ? Theme.of(context)
+                                        .colorScheme
+                                        .onSurface
+                                        .withOpacity(0.6)
+                                    : Theme.of(context).colorScheme.primary,
+                              ),
+                              title: Text(
+                                title,
+                                style: TextStyle(
+                                  fontWeight:
+                                      isRead ? FontWeight.w500 : FontWeight.w700,
+                                ),
+                              ),
+                              subtitle: createdAt == null
+                                  ? null
+                                  : Text(_dateFormat.format(createdAt)),
+                              trailing: const Icon(Icons.chevron_right),
+                              onTap: () async {
+                                await _openAdminNotificationDetail(
+                                  title: title,
+                                  body: body,
+                                  createdAt: createdAt,
+                                );
+                                if (!isRead) {
+                                  await _firestoreService.markAdminNotificationAsRead(
+                                    userId: userId,
+                                    notificationId: doc.id,
+                                  );
+                                }
+                              },
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openAdminNotificationDetail({
+    required String title,
+    required String body,
+    required DateTime? createdAt,
+  }) async {
+    await showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title.trim().isEmpty ? 'お知らせ' : title.trim()),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (createdAt != null)
+                Text(
+                  _dateFormat.format(createdAt),
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              if (createdAt != null) const SizedBox(height: 8),
+              Text(
+                body.trim().isEmpty ? '本文はありません。' : body.trim(),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('閉じる'),
+          ),
         ],
       ),
     );
@@ -89,7 +295,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '\u30e6\u30fc\u30b6\u30fc\u60c5\u5831',
+                  'ユーザー情報',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
@@ -97,7 +303,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   children: [
                     Expanded(
                       child: Text(
-                        '\u30e6\u30fc\u30b6\u30fc\u540d: ${username.isEmpty ? '\u672a\u8a2d\u5b9a' : username}',
+                        'ユーザー名: ${username.isEmpty ? '未設定' : username}',
                       ),
                     ),
                     if (hasInitialUserBadge) ...[
@@ -124,7 +330,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 FilledButton.tonal(
                   onPressed: () => _editUsername(userId, username),
                   child: const Text(
-                    '\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4',
+                    'ユーザー名を変更',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -153,7 +359,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     foregroundColor: Theme.of(context).colorScheme.error,
                   ),
                   label: const Text(
-                    '\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664',
+                    'アカウント削除',
                   ),
                 ),
               ],
@@ -176,13 +382,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  '\u30de\u30a4\u30a2\u30d7\u30ea',
+                  'マイアプリ',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 8),
                 if (app == null)
                   const Text(
-                    '\u767b\u9332\u4e2d\u306e\u30a2\u30d7\u30ea\u306f\u3042\u308a\u307e\u305b\u3093\u3002',
+                    '登録中のアプリはありません。',
                   )
                 else
                   MyAppCard(app: app),
@@ -202,7 +408,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '\u30c6\u30b9\u30c8\u5c65\u6b74',
+              'テスト履歴',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -223,9 +429,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     final items = historySnapshot.data ?? [];
                     if (items.isEmpty) {
                       return const EmptyState(
-                        title: '\u5c65\u6b74\u304c\u3042\u308a\u307e\u305b\u3093',
+                        title: '履歴がありません',
                         message:
-                            '\u30c6\u30b9\u30c8\u3057\u305f\u30a2\u30d7\u30ea\u304c\u3053\u3053\u306b\u8868\u793a\u3055\u308c\u307e\u3059\u3002',
+                            'テストしたアプリがここに表示されます。',
                       );
                     }
                     return Column(
@@ -258,7 +464,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                 onTap: () => _openTestedApp(item),
                                 trailing: FilledButton.tonal(
                                   onPressed: () => _openTestedApp(item),
-                                  child: const Text('\u958b\u304f'),
+                                  child: const Text('開く'),
                                 ),
                               );
                             },
@@ -278,7 +484,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   Future<void> _openTestedApp(TestingModel item) async {
     if (item.playUrl.isEmpty && item.packageName.isEmpty) {
       _showSnack(
-        'URL\u304c\u8a2d\u5b9a\u3055\u308c\u3066\u3044\u307e\u305b\u3093\u3002',
+        'URLが設定されていません。',
       );
       return;
     }
@@ -298,11 +504,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
             );
       if (!opened) {
         _showSnack(
-          '\u30b9\u30c8\u30a2\u3092\u958b\u3051\u307e\u305b\u3093\u3067\u3057\u305f\u3002URL\u3092\u78ba\u8a8d\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
+          'ストアを開けませんでした。URLを確認してください。',
         );
       }
     } catch (e) {
-      _showSnack('\u8d77\u52d5\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $e');
+      _showSnack('起動に失敗しました: $e');
     }
   }
 
@@ -311,21 +517,21 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('\u30e6\u30fc\u30b6\u30fc\u540d\u3092\u5909\u66f4'),
+        title: const Text('ユーザー名を変更'),
         content: TextField(
           controller: controller,
           decoration: const InputDecoration(
-            labelText: '\u30e6\u30fc\u30b6\u30fc\u540d',
+            labelText: 'ユーザー名',
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('\u30ad\u30e3\u30f3\u30bb\u30eb'),
+            child: const Text('キャンセル'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, controller.text.trim()),
-            child: const Text('\u4fdd\u5b58'),
+            child: const Text('保存'),
           ),
         ],
       ),
@@ -338,18 +544,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664'),
+        title: const Text('アカウント削除'),
         content: const Text(
-          '\u3053\u306e\u64cd\u4f5c\u306f\u53d6\u308a\u6d88\u305b\u307e\u305b\u3093\u3002\u672c\u5f53\u306b\u524a\u9664\u3057\u307e\u3059\u304b\uff1f',
+          'この操作は取り消せません。本当に削除しますか？',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('\u30ad\u30e3\u30f3\u30bb\u30eb'),
+            child: const Text('キャンセル'),
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('\u524a\u9664\u3059\u308b'),
+            child: const Text('削除する'),
           ),
         ],
       ),
@@ -362,19 +568,19 @@ class _MyPageScreenState extends State<MyPageScreen> {
     final confirmText = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('\u6700\u7d42\u78ba\u8a8d'),
+        title: const Text('最終確認'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              '\u524a\u9664\u3059\u308b\u306b\u306f\u300c\u524a\u9664\u300d\u3068\u5165\u529b\u3057\u3066\u304f\u3060\u3055\u3044\u3002',
+              '削除するには「削除」と入力してください。',
             ),
             const SizedBox(height: 8),
             TextField(
               controller: inputController,
               decoration: const InputDecoration(
-                labelText: '\u78ba\u8a8d\u5165\u529b',
+                labelText: '確認入力',
               ),
             ),
           ],
@@ -382,20 +588,20 @@ class _MyPageScreenState extends State<MyPageScreen> {
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('\u30ad\u30e3\u30f3\u30bb\u30eb'),
+            child: const Text('キャンセル'),
           ),
           FilledButton(
             onPressed: () =>
                 Navigator.pop(context, inputController.text.trim()),
-            child: const Text('\u78ba\u5b9a'),
+            child: const Text('確定'),
           ),
         ],
       ),
     );
 
-    if (confirmText != '\u524a\u9664') {
+    if (confirmText != '削除') {
       _showSnack(
-        '\u300c\u524a\u9664\u300d\u3068\u5165\u529b\u3057\u305f\u5834\u5408\u306e\u307f\u524a\u9664\u3067\u304d\u307e\u3059\u3002',
+        '「削除」と入力した場合のみ削除できます。',
       );
       return;
     }
@@ -411,16 +617,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
         _showSnack(
-          '\u518d\u30ed\u30b0\u30a4\u30f3\u5f8c\u306b\u518d\u5ea6\u304a\u8a66\u3057\u304f\u3060\u3055\u3044\u3002',
+          '再ログイン後に再度お試しください。',
         );
       } else {
         _showSnack(
-          '\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: ${e.code}',
+          'アカウント削除に失敗しました: ${e.code}',
         );
       }
     } catch (e) {
       _showSnack(
-        '\u30a2\u30ab\u30a6\u30f3\u30c8\u524a\u9664\u306b\u5931\u6557\u3057\u307e\u3057\u305f: $e',
+        'アカウント削除に失敗しました: $e',
       );
     }
   }
@@ -471,13 +677,13 @@ class _AccountDeletedNoticeScreen extends StatelessWidget {
               const Icon(Icons.check_circle_outline, size: 56),
               const SizedBox(height: 16),
               const Text(
-                '\u30a2\u30ab\u30a6\u30f3\u30c8\u304c\u524a\u9664\u3055\u308c\u307e\u3057\u305f',
+                'アカウントが削除されました',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
               const Text(
-                '\u3053\u306e\u64cd\u4f5c\u306f\u53d6\u308a\u6d88\u305b\u307e\u305b\u3093\u3002',
+                'この操作は取り消せません。',
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 20),
@@ -488,7 +694,7 @@ class _AccountDeletedNoticeScreen extends StatelessWidget {
                     (route) => false,
                   );
                 },
-                child: const Text('\u521d\u671f\u753b\u9762\u306b\u623b\u308b'),
+                child: const Text('初期画面に戻る'),
               ),
             ],
           ),
@@ -497,8 +703,6 @@ class _AccountDeletedNoticeScreen extends StatelessWidget {
     );
   }
 }
-
-
 
 class _PressHintBadge extends StatefulWidget {
   const _PressHintBadge({

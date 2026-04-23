@@ -1,4 +1,4 @@
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+﻿import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 class LocalNotificationService {
   LocalNotificationService._();
@@ -83,7 +83,7 @@ class LocalNotificationService {
     }
 
     final displayName =
-        testerName.trim().isEmpty ? '\u8ab0\u304b' : testerName.trim();
+        testerName.trim().isEmpty ? '誰か' : testerName.trim();
     const details = NotificationDetails(
       android: AndroidNotificationDetails(
         'tester_joined_channel',
@@ -97,7 +97,36 @@ class LocalNotificationService {
     await _plugin.show(
       _notificationId++,
       'hiraku',
-      '$displayName\u3055\u3093\u304c\u3042\u306a\u305f\u306e\u30c6\u30b9\u30bf\u30fc\u306b\u306a\u308a\u307e\u3057\u305f\uff01',
+      '$displayNameさんがあなたのテスターになりました！',
+      details,
+    );
+  }
+
+  Future<void> showSimpleNotification({
+    required String title,
+    required String body,
+  }) async {
+    if (!_initialized) {
+      await initialize();
+    }
+    final trimmedTitle = title.trim();
+    final trimmedBody = body.trim();
+    if (trimmedTitle.isEmpty || trimmedBody.isEmpty) {
+      return;
+    }
+    const details = NotificationDetails(
+      android: AndroidNotificationDetails(
+        'tester_joined_channel',
+        'Tester Notifications',
+        channelDescription: 'Notification when a new tester joins your app.',
+        importance: Importance.high,
+        priority: Priority.high,
+      ),
+    );
+    await _plugin.show(
+      _notificationId++,
+      trimmedTitle,
+      trimmedBody,
       details,
     );
   }
