@@ -1,4 +1,7 @@
 ﻿import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'dart:ui';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
@@ -14,10 +17,24 @@ import 'services/onboarding_service.dart';
 import 'services/push_notification_service.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await MobileAds.instance.initialize();
-  runApp(const HirakuApp());
+  await runZonedGuarded(() async {
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp();
+
+    final crashlytics = FirebaseCrashlytics.instance;
+    await crashlytics.setCrashlyticsCollectionEnabled(kReleaseMode);
+
+    FlutterError.onError = crashlytics.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      crashlytics.recordError(error, stack, fatal: true);
+      return true;
+    };
+
+    await MobileAds.instance.initialize();
+    runApp(const HirakuApp());
+  }, (error, stack) {
+    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+  });
 }
 
 class HirakuApp extends StatelessWidget {
@@ -63,7 +80,7 @@ class HirakuApp extends StatelessWidget {
     );
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'hiraku',
+      title: 'HIRAKU',
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: colorScheme,
@@ -231,4 +248,7 @@ class _RootGateState extends State<RootGate> {
     await _appNotificationService.startForUser(user.uid);
   }
 }
+
+
+
 
