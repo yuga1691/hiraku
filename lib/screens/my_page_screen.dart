@@ -1,6 +1,7 @@
 ﻿import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
@@ -8,6 +9,7 @@ import 'package:intl/intl.dart';
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
 import '../services/analytics_service.dart';
+import '../services/admin_feedback_service.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
 import '../services/local_notification_service.dart';
@@ -28,7 +30,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
   final DateFormat _dateFormat = DateFormat('yyyy/MM/dd HH:mm');
+  static const String _privacyPolicyUrl =
+      'https://yuga1691.github.io/hiraku-privacy/';
   bool _requestingNotificationPermission = false;
+  bool _isUserInfoExpanded = false;
+  bool _isNotificationExpanded = false;
 
   static const _helpSections = [
     UsageHelpSection(
@@ -63,11 +69,15 @@ class _MyPageScreenState extends State<MyPageScreen> {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          _buildProfileSection(user.uid),
-          const SizedBox(height: 16),
           _buildMyAppSection(user.uid),
           const SizedBox(height: 16),
           _buildTestingHistory(user.uid),
+          const SizedBox(height: 16),
+          _buildProfileSection(user.uid),
+          const SizedBox(height: 16),
+          _buildNotificationSection(),
+          const SizedBox(height: 16),
+          _buildPrivacyPolicySection(),
         ],
       ),
     );
@@ -80,6 +90,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
         const Text('マイページ'),
         const SizedBox(width: 6),
         _buildAdminNotificationButton(userId),
+        const SizedBox(width: 4),
+        _buildDeveloperFeedbackButton(userId),
       ],
     );
   }
@@ -136,6 +148,36 @@ class _MyPageScreenState extends State<MyPageScreen> {
         );
       },
     );
+  }
+
+  Widget _buildDeveloperFeedbackButton(String userId) {
+    return Tooltip(
+      message: '開発への意見ボックス',
+      child: InkWell(
+        borderRadius: BorderRadius.circular(999),
+        onTap: () => _openDeveloperFeedbackBox(userId),
+        child: Padding(
+          padding: const EdgeInsets.all(6),
+          child: Icon(
+            Icons.feedback_outlined,
+            size: 20,
+            color: Theme.of(context).colorScheme.onSurface,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openDeveloperFeedbackBox(String userId) async {
+    final submitted = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (_) => _DeveloperFeedbackSheet(userId: userId),
+    );
+    if (submitted == true) {
+      _showSnack('ご意見を送信しました。ありがとうございます。');
+    }
   }
 
   Future<void> _openAdminNotificationBox(String userId) async {
@@ -294,79 +336,157 @@ class _MyPageScreenState extends State<MyPageScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'ユーザー情報',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 8),
                 Row(
                   children: [
-                    Expanded(
+                    const Expanded(
                       child: Text(
-                        'ユーザー名: ${username.isEmpty ? '未設定' : username}',
+                        'ユーザー情報',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
                     ),
-                    if (hasInitialUserBadge) ...[
-                      const SizedBox(width: 6),
-                      _PressHintBadge(
-                        icon: Icons.rocket_launch,
-                        color: Theme.of(context).colorScheme.primary,
-                        hint: 'HIRAKUの開発に協力していただいた方です',
+                    IconButton(
+                      tooltip: _isUserInfoExpanded ? '閉じる' : '開く',
+                      onPressed: () {
+                        setState(() => _isUserInfoExpanded = !_isUserInfoExpanded);
+                      },
+                      icon: Icon(
+                        _isUserInfoExpanded
+                            ? Icons.keyboard_arrow_up
+                            : Icons.keyboard_arrow_down,
                       ),
-                    ],
-                    if (hasOfficialBadge) ...[
-                      const SizedBox(width: 4),
-                      _PressHintBadge(
-                        icon: Icons.workspace_premium,
-                        color: Theme.of(context).colorScheme.primary,
-                        hint: '本アプリ開発者です',
-                      ),
-                    ],
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text('あなたがテストした回数: $testedCount'),
-                const SizedBox(height: 12),
-                FilledButton.tonal(
-                  onPressed: () => _editUsername(userId, username),
-                  child: const Text(
-                    'ユーザー名を変更',
+                if (_isUserInfoExpanded) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'ユーザー名: ${username.isEmpty ? '未設定' : username}',
+                        ),
+                      ),
+                      if (hasInitialUserBadge) ...[
+                        const SizedBox(width: 6),
+                        _PressHintBadge(
+                          icon: Icons.rocket_launch,
+                          color: Theme.of(context).colorScheme.primary,
+                          hint: 'HIRAKUの開発に協力していただいた方です',
+                        ),
+                      ],
+                      if (hasOfficialBadge) ...[
+                        const SizedBox(width: 4),
+                        _PressHintBadge(
+                          icon: Icons.workspace_premium,
+                          color: Theme.of(context).colorScheme.primary,
+                          hint: '本アプリ開発者です',
+                        ),
+                      ],
+                    ],
                   ),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  '他の人があなたのアプリをダウンロードした際に，通知が来ます',
-                ),
-                const SizedBox(height: 8),
-                FilledButton.icon(
-                  onPressed: _requestingNotificationPermission
-                      ? null
-                      : _requestNotificationPermission,
-                  icon: _requestingNotificationPermission
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.notifications_active_outlined),
-                  label: const Text('通知を受け取る'),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  onPressed: () => _confirmDeleteAccount(userId),
-                  icon: const Icon(Icons.delete_outline),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Theme.of(context).colorScheme.error,
+                  const SizedBox(height: 4),
+                  Text('あなたがテストした回数: $testedCount'),
+                  const SizedBox(height: 12),
+                  FilledButton.tonal(
+                    onPressed: () => _editUsername(userId, username),
+                    child: const Text(
+                      'ユーザー名を変更',
+                    ),
                   ),
-                  label: const Text(
-                    'アカウント削除',
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: () => _confirmDeleteAccount(userId),
+                    icon: const Icon(Icons.delete_outline),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Theme.of(context).colorScheme.error,
+                    ),
+                    label: const Text(
+                      'アカウント削除',
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
         );
       },
+    );
+  }
+
+  Widget _buildPrivacyPolicySection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'プライバシーポリシー',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _openPrivacyPolicy,
+              icon: const Icon(Icons.open_in_new),
+              label: const Text('開く'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationSection() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Expanded(
+                  child: Text(
+                    '通知',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ),
+                IconButton(
+                  tooltip: _isNotificationExpanded ? '閉じる' : '開く',
+                  onPressed: () {
+                    setState(
+                      () => _isNotificationExpanded = !_isNotificationExpanded,
+                    );
+                  },
+                  icon: Icon(
+                    _isNotificationExpanded
+                        ? Icons.keyboard_arrow_up
+                        : Icons.keyboard_arrow_down,
+                  ),
+                ),
+              ],
+            ),
+            if (_isNotificationExpanded) ...[
+              const SizedBox(height: 8),
+              const Text('他のテスターがあなたのアプリをテストすると通知が来ます。'),
+              const SizedBox(height: 8),
+              FilledButton.icon(
+                onPressed: _requestingNotificationPermission
+                    ? null
+                    : _requestNotificationPermission,
+                icon: _requestingNotificationPermission
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.notifications_active_outlined),
+                label: const Text('通知を受け取る'),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -654,11 +774,143 @@ class _MyPageScreenState extends State<MyPageScreen> {
     }
   }
 
+  Future<void> _openPrivacyPolicy() async {
+    final opened = await _launcherService.openWebUrl(
+      packageName: '',
+      playUrl: _privacyPolicyUrl,
+    );
+    if (!opened) {
+      _showSnack('プライバシーポリシーを開けませんでした。');
+    }
+  }
+
   void _showSnack(String message) {
     if (!mounted) return;
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+}
+
+class _DeveloperFeedbackSheet extends StatefulWidget {
+  const _DeveloperFeedbackSheet({required this.userId});
+
+  final String userId;
+
+  @override
+  State<_DeveloperFeedbackSheet> createState() => _DeveloperFeedbackSheetState();
+}
+
+class _DeveloperFeedbackSheetState extends State<_DeveloperFeedbackSheet> {
+  final AdminFeedbackService _adminFeedbackService = AdminFeedbackService();
+  final TextEditingController _messageController = TextEditingController();
+  String _type = '改善要望';
+  bool _sending = false;
+
+  @override
+  void dispose() {
+    _messageController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final message = _messageController.text.trim();
+    if (message.length < 5) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('内容を5文字以上入力してください。')));
+      return;
+    }
+    setState(() => _sending = true);
+    try {
+      await _adminFeedbackService.submit(type: _type, message: message);
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } on FirebaseFunctionsException catch (e) {
+      if (!mounted) return;
+      final reason = e.message?.trim().isNotEmpty == true
+          ? e.message!.trim()
+          : e.code;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('送信に失敗しました: $reason')));
+      setState(() => _sending = false);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('送信に失敗しました: $e')));
+      setState(() => _sending = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+    return SafeArea(
+      child: AnimatedPadding(
+        duration: const Duration(milliseconds: 150),
+        curve: Curves.easeOut,
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 16 + bottomInset),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                '開発への意見ボックス',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 8),
+              DropdownButtonFormField<String>(
+                initialValue: _type,
+                decoration: const InputDecoration(labelText: '種別'),
+                items: const [
+                  DropdownMenuItem(value: '改善要望', child: Text('改善要望')),
+                  DropdownMenuItem(value: '不具合報告', child: Text('不具合報告')),
+                  DropdownMenuItem(
+                    value: '通報・ブロック相談',
+                    child: Text('通報・ブロック相談'),
+                  ),
+                  DropdownMenuItem(value: 'その他', child: Text('その他')),
+                ],
+                onChanged: _sending
+                    ? null
+                    : (value) {
+                        if (value == null) return;
+                        setState(() => _type = value);
+                      },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _messageController,
+                enabled: !_sending,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  labelText: '内容',
+                  hintText: '改善してほしい点や困っていることをご記入ください',
+                ),
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: _sending ? null : _submit,
+                  child: _sending
+                      ? const SizedBox(
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Text('送信する'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

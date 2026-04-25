@@ -12,6 +12,7 @@ class PushNotificationService {
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static const String _adminTopic = 'hiraku_admin';
 
   StreamSubscription<RemoteMessage>? _onMessageSubscription;
   StreamSubscription<String>? _onTokenRefreshSubscription;
@@ -25,6 +26,7 @@ class PushNotificationService {
     await _messaging.requestPermission(alert: true, badge: true, sound: true);
 
     await _messaging.subscribeToTopic('hiraku_all');
+    await _syncAdminTopicSubscription(userId);
 
     final token = await _messaging.getToken();
     if (token != null && token.isNotEmpty) {
@@ -65,5 +67,15 @@ class PushNotificationService {
       'updatedAt': FieldValue.serverTimestamp(),
       'platform': 'app',
     }, SetOptions(merge: true));
+  }
+
+  Future<void> _syncAdminTopicSubscription(String userId) async {
+    final snapshot = await _db.collection('users').doc(userId).get();
+    final isOfficial = (snapshot.data()?['hasOfficialBadge'] ?? false) as bool;
+    if (isOfficial) {
+      await _messaging.subscribeToTopic(_adminTopic);
+      return;
+    }
+    await _messaging.unsubscribeFromTopic(_adminTopic);
   }
 }

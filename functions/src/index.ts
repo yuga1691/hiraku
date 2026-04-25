@@ -1,4 +1,4 @@
-import { initializeApp } from "firebase-admin/app";
+﻿import { initializeApp } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 import { onDocumentCreated } from "firebase-functions/v2/firestore";
@@ -9,9 +9,6 @@ initializeApp();
 
 const db = getFirestore();
 const discordWebhookUrl = defineSecret("DISCORD_WEBHOOK_URL");
-const sendGridApiKey = defineSecret("SENDGRID_API_KEY");
-const feedbackToEmail = defineSecret("FEEDBACK_TO_EMAIL");
-const feedbackFromEmail = defineSecret("FEEDBACK_FROM_EMAIL");
 const RATE_LIMIT_SECONDS = 10;
 
 type NotificationType =
@@ -33,6 +30,7 @@ type RequestData = {
 };
 
 type FeedbackRequestData = {
+  type?: unknown;
   message?: unknown;
 };
 
@@ -194,7 +192,6 @@ export const sendDiscordNotification = onCall(
 export const submitAdminFeedback = onCall(
   {
     region: "asia-northeast1",
-    secrets: [sendGridApiKey, feedbackToEmail, feedbackFromEmail],
   },
   async (request) => {
     if (!request.auth?.uid) {
@@ -213,56 +210,83 @@ export const submitAdminFeedback = onCall(
     const userDoc = await db.collection("users").doc(userId).get();
     const usernameRaw = userDoc.get("username");
     const username = asSafeText(usernameRaw, 80) || "ユーザー";
+    const feedbackType = asSafeText(
+      (request.data as FeedbackRequestData | undefined)?.type,
+      80,
+    ) || "その他";
 
-    const subject = `[HIRAKU] ご意見箱 from ${username}`;
-    const textBody = [
-      "HIRAKU ご意見箱",
-      `userId: ${userId}`,
-      `username: ${username}`,
+    const subject = `[HIRAKU] 開発への意見(${feedbackType}) from ${username}`;
+    const preview = message.length > 120 ? `${message.slice(0, 120)}…` : message;
+    const notificationBody = [
+      `種別: ${feedbackType}`,
+      `送信者: ${username}`,
       "",
-      "message:",
       message,
     ].join("\n");
+    const createdAt = Timestamp.now();
 
-    const toEmail = feedbackToEmail.value();
-    const fromEmail = feedbackFromEmail.value();
-    const apiKey = sendGridApiKey.value();
-
-    if (!toEmail || !fromEmail || !apiKey) {
-      console.error("Feedback email secrets are missing");
-      throw new HttpsError("failed-precondition", "email config missing");
-    }
-
-    const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        personalizations: [{ to: [{ email: toEmail }] }],
-        from: { email: fromEmail },
-        subject,
-        content: [{ type: "text/plain", value: textBody }],
-      }),
-    });
-
-    if (!response.ok) {
-      const body = await response.text();
-      console.error("SendGrid failed", {
-        status: response.status,
-        body,
-        userId,
-      });
-      throw new HttpsError("internal", "email send failed");
-    }
-
-    await db.collection("adminFeedback").add({
+    const feedbackRef = await db.collection("adminFeedback").add({
       userId,
       username,
+      type: feedbackType,
       message,
-      createdAt: Timestamp.now(),
-      status: "sent_to_email",
+      createdAt,
+      status: "open",
+      notifyChannel: "fcm_topic_hiraku_admin",
+    });
+
+    const officialUsers = await db
+      .collection("users")
+      .where("hasOfficialBadge", "==", true)
+      .get();
+
+    let batch = db.batch();
+    let opCount = 0;
+    let deliveredCount = 0;
+
+    for (const userDoc of officialUsers.docs) {
+      const notificationRef = userDoc.ref.collection("adminNotifications").doc();
+      batch.set(notificationRef, {
+        title: subject,
+        body: notificationBody,
+        createdAt,
+        isRead: false,
+        sourceFeedbackId: feedbackRef.id,
+        type: "developer_feedback",
+      });
+      opCount += 1;
+      deliveredCount += 1;
+
+      if (opCount >= 450) {
+        await batch.commit();
+        batch = db.batch();
+        opCount = 0;
+      }
+    }
+
+    if (opCount > 0) {
+      await batch.commit();
+    }
+
+    await feedbackRef.set(
+      {
+        deliveredDeveloperNotificationCount: deliveredCount,
+      },
+      { merge: true },
+    );
+
+    await getMessaging().send({
+      topic: "hiraku_admin",
+      notification: {
+        title: subject,
+        body: preview,
+      },
+      data: {
+        kind: "admin_feedback",
+        userId,
+        username,
+        type: feedbackType,
+      },
     });
 
     return { ok: true };
@@ -281,7 +305,7 @@ export const publishAdminBroadcast = onDocumentCreated(
     }
 
     const raw = snapshot.data() as AdminBroadcastData;
-    const title = asSafeText(raw.title, 80) || "HIRAKUからのお知らせ";
+    const title = asSafeText(raw.title, 80) || "HIRAKU縺九ｉ縺ｮ縺顔衍繧峨○";
     const body = asSafeText(raw.body, 400);
     const broadcastId = event.params.broadcastId;
 
@@ -349,3 +373,4 @@ export const publishAdminBroadcast = onDocumentCreated(
     );
   },
 );
+

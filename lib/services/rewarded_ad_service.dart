@@ -4,9 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 
 class RewardedAdService {
-  // Keep using test ads until production AdMob setup is complete.
-  // Set this to false before releasing to production.
-  static const bool _forceTestAds = true;
+  // Debug/profile uses test ads automatically. Release uses production ads.
+  static const bool _forceTestAds = false;
 
   Future<bool> showBoostRewardedAd({bool? forceTestMode}) async {
     final useTestMode = forceTestMode ?? _forceTestAds || !kReleaseMode;
