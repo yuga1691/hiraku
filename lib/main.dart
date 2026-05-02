@@ -1,6 +1,8 @@
 ﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui';
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -214,9 +216,16 @@ class _RootGateState extends State<RootGate> {
           );
         }
         if (snapshot.hasError) {
+          final message = _buildInitializationErrorMessage(snapshot.error!);
           return Scaffold(
             body: Center(
-              child: Text('初期化中にエラーが発生しました: ${snapshot.error}'),
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(
+                  message,
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ),
           );
         }
@@ -247,7 +256,37 @@ class _RootGateState extends State<RootGate> {
     await _pushNotificationService.startForUser(user.uid);
     await _appNotificationService.startForUser(user.uid);
   }
+
+  String _buildInitializationErrorMessage(Object error) {
+    if (_isNetworkError(error)) {
+      return 'インターネット接続を確認してください。'
+          '\n\nネットワークに接続できないため、アプリを初期化できませんでした。'
+          '\n通信環境を確認してから再度お試しください。';
+    }
+    return '初期化中にエラーが発生しました。'
+        '\n時間をおいて再度お試しください。'
+        '\n\n詳細: $error';
+  }
+
+  bool _isNetworkError(Object error) {
+    if (error is FirebaseAuthException && error.code == 'network-request-failed') {
+      return true;
+    }
+    if (error is FirebaseException && error.code == 'network-request-failed') {
+      return true;
+    }
+    if (error is SocketException || error is TimeoutException) {
+      return true;
+    }
+    final normalized = error.toString().toLowerCase();
+    return normalized.contains('network-request-failed') ||
+        normalized.contains('socketexception') ||
+        normalized.contains('failed host lookup') ||
+        normalized.contains('timeout');
+  }
 }
+
+
 
 
 
