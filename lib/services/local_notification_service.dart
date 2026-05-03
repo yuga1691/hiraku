@@ -91,6 +91,7 @@ class LocalNotificationService {
         channelDescription: 'Notification when a new tester joins your app.',
         importance: Importance.high,
         priority: Priority.high,
+        icon: 'ic_stat_notification',
       ),
     );
 
@@ -121,6 +122,7 @@ class LocalNotificationService {
         channelDescription: 'Notification when a new tester joins your app.',
         importance: Importance.high,
         priority: Priority.high,
+        icon: 'ic_stat_notification',
       ),
     );
     await _plugin.show(
@@ -131,3 +133,4 @@ class LocalNotificationService {
     );
   }
 }
+

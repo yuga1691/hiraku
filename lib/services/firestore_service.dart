@@ -28,16 +28,19 @@ class FirestoreService {
 
   Future<void> ensureUserDoc(String userId) async {
     final ref = _users.doc(userId);
-    final snap = await ref.get();
-    if (!snap.exists) {
-      await ref.set({
+    await _db.runTransaction((tx) async {
+      final snap = await tx.get(ref);
+      if (snap.exists) {
+        return;
+      }
+      tx.set(ref, {
         'username': '',
         'createdAt': FieldValue.serverTimestamp(),
         'testedCountTotal': 0,
         'hasInitialUserBadge': false,
         'hasOfficialBadge': false,
       });
-    }
+    });
   }
 
   Future<void> updateUsername(String userId, String username) async {

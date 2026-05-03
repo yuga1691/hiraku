@@ -1,0 +1,19 @@
+﻿<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Notification small icon: monochrome silhouette based on HIRAKU mark -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M3,20 L20,3 L20,7.5 L7.2,20 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M9,20 L9,17.2 L11.5,14.7 L11.5,20 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M12.3,20 L12.3,13.8 L14.8,11.3 L14.8,20 Z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M15.7,20 L15.7,10.4 L18.2,7.9 L18.2,20 Z" />
+</vector>
