@@ -30,11 +30,16 @@ class _MyPageScreenState extends State<MyPageScreen> {
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
   final DateFormat _dateFormat = DateFormat('yyyy/MM/dd HH:mm');
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _userInfoHeaderKey = GlobalKey();
+  final GlobalKey _notificationHeaderKey = GlobalKey();
   static const String _privacyPolicyUrl =
       'https://yuga1691.github.io/hiraku-privacy/';
   bool _requestingNotificationPermission = false;
   bool _isUserInfoExpanded = false;
   bool _isNotificationExpanded = false;
+  final Map<String, Stream<AppModel?>> _myActiveAppStreams = {};
+  final Map<String, Stream<List<TestingModel>>> _testingHistoryStreams = {};
 
   static const _helpSections = [
     UsageHelpSection(
@@ -44,6 +49,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
       assetPath: 'assets/guide/1-4.jpg',
     ),
   ];
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +78,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         ],
       ),
       body: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
         children: [
           _buildMyAppSection(user.uid),
@@ -337,6 +349,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
+                  key: _userInfoHeaderKey,
                   children: [
                     const Expanded(
                       child: Text(
@@ -357,54 +370,60 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     ),
                   ],
                 ),
-                if (_isUserInfoExpanded) ...[
-                  const SizedBox(height: 8),
-                  Row(
+                _buildAnimatedExpand(
+                  expanded: _isUserInfoExpanded,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          'ユーザー名: ${username.isEmpty ? '未設定' : username}',
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'ユーザー名: ${username.isEmpty ? '未設定' : username}',
+                            ),
+                          ),
+                          if (hasInitialUserBadge) ...[
+                            const SizedBox(width: 6),
+                            _PressHintBadge(
+                              icon: Icons.rocket_launch,
+                              color: Theme.of(context).colorScheme.primary,
+                              hint: 'HIRAKUの開発に協力していただいた方です',
+                            ),
+                          ],
+                          if (hasOfficialBadge) ...[
+                            const SizedBox(width: 4),
+                            _PressHintBadge(
+                              icon: Icons.workspace_premium,
+                              color: Theme.of(context).colorScheme.primary,
+                              hint: '本アプリ開発者です',
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text('あなたがテストした回数: $testedCount'),
+                      const SizedBox(height: 12),
+                      FilledButton.tonal(
+                        onPressed: () => _editUsername(userId, username),
+                        child: const Text(
+                          'ユーザー名を変更',
                         ),
                       ),
-                      if (hasInitialUserBadge) ...[
-                        const SizedBox(width: 6),
-                        _PressHintBadge(
-                          icon: Icons.rocket_launch,
-                          color: Theme.of(context).colorScheme.primary,
-                          hint: 'HIRAKUの開発に協力していただいた方です',
+                      const SizedBox(height: 8),
+                      OutlinedButton.icon(
+                        onPressed: () => _confirmDeleteAccount(userId),
+                        icon: const Icon(Icons.delete_outline),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
                         ),
-                      ],
-                      if (hasOfficialBadge) ...[
-                        const SizedBox(width: 4),
-                        _PressHintBadge(
-                          icon: Icons.workspace_premium,
-                          color: Theme.of(context).colorScheme.primary,
-                          hint: '本アプリ開発者です',
+                        label: const Text(
+                          'アカウント削除',
                         ),
-                      ],
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 4),
-                  Text('あなたがテストした回数: $testedCount'),
-                  const SizedBox(height: 12),
-                  FilledButton.tonal(
-                    onPressed: () => _editUsername(userId, username),
-                    child: const Text(
-                      'ユーザー名を変更',
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  OutlinedButton.icon(
-                    onPressed: () => _confirmDeleteAccount(userId),
-                    icon: const Icon(Icons.delete_outline),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Theme.of(context).colorScheme.error,
-                    ),
-                    label: const Text(
-                      'アカウント削除',
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
           ),
@@ -444,6 +463,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              key: _notificationHeaderKey,
               children: [
                 const Expanded(
                   child: Text(
@@ -466,24 +486,30 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
               ],
             ),
-            if (_isNotificationExpanded) ...[
-              const SizedBox(height: 8),
-              const Text('他のテスターがあなたのアプリをテストすると通知が来ます。'),
-              const SizedBox(height: 8),
-              FilledButton.icon(
-                onPressed: _requestingNotificationPermission
-                    ? null
-                    : _requestNotificationPermission,
-                icon: _requestingNotificationPermission
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.notifications_active_outlined),
-                label: const Text('通知を受け取る'),
+            _buildAnimatedExpand(
+              expanded: _isNotificationExpanded,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  const Text('他のテスターがあなたのアプリをテストすると通知が来ます。'),
+                  const SizedBox(height: 8),
+                  FilledButton.icon(
+                    onPressed: _requestingNotificationPermission
+                        ? null
+                        : _requestNotificationPermission,
+                    icon: _requestingNotificationPermission
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.notifications_active_outlined),
+                    label: const Text('通知を受け取る'),
+                  ),
+                ],
               ),
-            ],
+            ),
           ],
         ),
       ),
@@ -491,8 +517,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Widget _buildMyAppSection(String userId) {
+    final myActiveAppStream = _myActiveAppStreams.putIfAbsent(
+      userId,
+      () => _firestoreService.watchMyActiveApp(userId),
+    );
     return StreamBuilder<AppModel?>(
-      stream: _firestoreService.watchMyActiveApp(userId),
+      stream: myActiveAppStream,
       builder: (context, snapshot) {
         final app = snapshot.data;
         return Card(
@@ -521,6 +551,14 @@ class _MyPageScreenState extends State<MyPageScreen> {
   }
 
   Widget _buildTestingHistory(String userId) {
+    final myActiveAppStream = _myActiveAppStreams.putIfAbsent(
+      userId,
+      () => _firestoreService.watchMyActiveApp(userId),
+    );
+    final testingHistoryStream = _testingHistoryStreams.putIfAbsent(
+      userId,
+      () => _firestoreService.watchTestingHistory(userId),
+    );
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -533,21 +571,24 @@ class _MyPageScreenState extends State<MyPageScreen> {
             ),
             const SizedBox(height: 8),
             StreamBuilder<AppModel?>(
-              stream: _firestoreService.watchMyActiveApp(userId),
+              stream: myActiveAppStream,
               builder: (context, snapshot) {
                 final myApp = snapshot.data;
                 final openedByTesterAppName = myApp?.openCountByTesterAppName ?? {};
                 return StreamBuilder<List<TestingModel>>(
-                  stream: _firestoreService.watchTestingHistory(userId),
+                  stream: testingHistoryStream,
                   builder: (context, historySnapshot) {
-                    if (historySnapshot.connectionState == ConnectionState.waiting) {
+                    final items = historySnapshot.data;
+                    if (items == null &&
+                        historySnapshot.connectionState ==
+                            ConnectionState.waiting) {
                       return const Padding(
                         padding: EdgeInsets.all(8),
                         child: CircularProgressIndicator(),
                       );
                     }
-                    final items = historySnapshot.data ?? [];
-                    if (items.isEmpty) {
+                    final safeItems = items ?? const <TestingModel>[];
+                    if (safeItems.isEmpty) {
                       return const EmptyState(
                         title: '履歴がありません',
                         message:
@@ -555,7 +596,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       );
                     }
                     return Column(
-                      children: items
+                      children: safeItems
                           .map(
                             (item) {
                               final openCountByOtherToMe =
@@ -789,6 +830,24 @@ class _MyPageScreenState extends State<MyPageScreen> {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Widget _buildAnimatedExpand({
+    required bool expanded,
+    required Widget child,
+  }) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 240),
+      curve: Curves.easeInOutCubic,
+      alignment: Alignment.topCenter,
+      child: ClipRect(
+        child: Align(
+          alignment: Alignment.topCenter,
+          heightFactor: expanded ? 1 : 0,
+          child: child,
+        ),
+      ),
+    );
   }
 }
 
