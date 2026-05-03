@@ -30,9 +30,7 @@ class AppCard extends StatelessWidget {
     final isOpenDisabled = loading || isOwnerApp;
     return Card(
       elevation: isOwnerApp ? 6 : null,
-      shadowColor: isOwnerApp
-          ? Colors.lightBlueAccent.withOpacity(0.55)
-          : null,
+      shadowColor: isOwnerApp ? Colors.lightBlueAccent.withOpacity(0.55) : null,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: isOwnerApp
@@ -69,10 +67,9 @@ class AppCard extends StatelessWidget {
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .onSurface
-                                .withOpacity(0.7),
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.onSurface.withOpacity(0.7),
                           ),
                         ),
                       ),
@@ -89,7 +86,7 @@ class AppCard extends StatelessWidget {
                             height: 16,
                             child: CircularProgressIndicator(strokeWidth: 2),
                           )
-                        : Text(isOwnerApp ? '自分のアプリ' : 'アプリを開く'),
+                        : Text(isOwnerApp ? '自分のアプリ' : '詳細を見る'),
                   ),
                 ],
               ),
@@ -102,16 +99,10 @@ class AppCard extends StatelessWidget {
 
   Widget _buildIcon() {
     if (app.iconBase64 == null || app.iconBase64!.isEmpty) {
-      return const CircleAvatar(
-        radius: 28,
-        child: Icon(Icons.apps),
-      );
+      return const CircleAvatar(radius: 28, child: Icon(Icons.apps));
     }
     final bytes = base64Decode(app.iconBase64!);
-    return CircleAvatar(
-      radius: 28,
-      backgroundImage: MemoryImage(bytes),
-    );
+    return CircleAvatar(radius: 28, backgroundImage: MemoryImage(bytes));
   }
 
   Widget _buildBadgeArea(BuildContext context) {
@@ -198,11 +189,7 @@ class _PressHintIconState extends State<_PressHintIcon> {
               onTapDown: (_) => _setHintVisible(true),
               onTapUp: (_) => _scheduleHideHint(),
               onTapCancel: _scheduleHideHint,
-              child: Icon(
-                widget.icon,
-                size: 16,
-                color: widget.color,
-              ),
+              child: Icon(widget.icon, size: 16, color: widget.color),
             ),
           ),
           if (_showHint)

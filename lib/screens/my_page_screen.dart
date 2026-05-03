@@ -582,10 +582,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     if (items == null &&
                         historySnapshot.connectionState ==
                             ConnectionState.waiting) {
-                      return const Padding(
-                        padding: EdgeInsets.all(8),
-                        child: CircularProgressIndicator(),
-                      );
+                      return const SizedBox(height: 24);
                     }
                     final safeItems = items ?? const <TestingModel>[];
                     if (safeItems.isEmpty) {

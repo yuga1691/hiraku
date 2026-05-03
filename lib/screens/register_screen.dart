@@ -26,6 +26,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
   final ImagePicker _picker = ImagePicker();
+  Stream<AppModel?>? _myActiveAppStream;
+  String? _streamUserId;
 
   String? _iconBase64;
   bool _saving = false;
@@ -57,6 +59,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (user == null) {
       return const Scaffold(body: Center(child: Text('ユーザー認証に失敗しました。')));
     }
+    if (_streamUserId != user.uid) {
+      _streamUserId = user.uid;
+      _myActiveAppStream = _firestoreService.watchMyActiveApp(user.uid);
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('登録'),
@@ -73,9 +79,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
         ],
       ),
       body: StreamBuilder<AppModel?>(
-        stream: _firestoreService.watchMyActiveApp(user.uid),
+        stream: _myActiveAppStream,
         builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
+          if (!snapshot.hasData &&
+              snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
           final myApp = snapshot.data;
@@ -146,7 +153,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
         TextField(
           controller: _messageController,
           decoration: const InputDecoration(
-            labelText: 'コメント',
+            labelText: 'アプリの説明',
             border: OutlineInputBorder(),
           ),
           maxLines: 2,
@@ -304,10 +311,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         CircleAvatar(
                           radius: 24,
                           backgroundImage:
-                              draftIconBase64 == null || draftIconBase64!.isEmpty
+                              draftIconBase64 == null ||
+                                  draftIconBase64!.isEmpty
                               ? null
                               : MemoryImage(base64Decode(draftIconBase64!)),
-                          child: draftIconBase64 == null || draftIconBase64!.isEmpty
+                          child:
+                              draftIconBase64 == null ||
+                                  draftIconBase64!.isEmpty
                               ? const Icon(Icons.apps)
                               : null,
                         ),
@@ -332,7 +342,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
                               TextButton(
                                 onPressed: dialogSaving
                                     ? null
-                                    : () => setDialogState(() => draftIconBase64 = null),
+                                    : () => setDialogState(
+                                        () => draftIconBase64 = null,
+                                      ),
                                 child: const Text('アイコンを削除'),
                               ),
                             ],
@@ -391,11 +403,10 @@ class _RegisterScreenState extends State<RegisterScreen> {
     );
     messageController.dispose();
   }
+
   void _showSnack(String message) {
     ScaffoldMessenger.of(
       context,
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 }
-
-

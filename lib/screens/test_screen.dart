@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/app_model.dart';
+import '../models/testing_model.dart';
 import '../services/analytics_service.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
@@ -25,6 +26,10 @@ class _TestScreenState extends State<TestScreen> {
   final Set<String> _loadingAppIds = {};
   final Set<String> _loadingOwnerUserIds = {};
   final Map<String, UserDisplayInfo> _ownerDisplayInfoByUserId = {};
+  bool _isPrefetchingOwners = false;
+  Stream<List<AppModel>>? _availableAppsStream;
+  Stream<List<TestingModel>>? _testingHistoryStream;
+  String? _streamUserId;
   String? _pendingUserId;
   AppModel? _pendingInstallApp;
   bool _isInstallConfirmDialogShowing = false;
@@ -81,6 +86,11 @@ class _TestScreenState extends State<TestScreen> {
     if (user == null) {
       return const Scaffold(body: Center(child: Text('ユーザー認証に失敗しました。')));
     }
+    if (_streamUserId != user.uid) {
+      _streamUserId = user.uid;
+      _availableAppsStream = _firestoreService.watchAvailableApps();
+      _testingHistoryStream = _firestoreService.watchTestingHistory(user.uid);
+    }
     return Scaffold(
       appBar: AppBar(
         title: Row(
@@ -116,13 +126,18 @@ class _TestScreenState extends State<TestScreen> {
         ],
       ),
       body: StreamBuilder<List<AppModel>>(
-        stream: _firestoreService.watchAvailableApps(),
+        stream: _availableAppsStream,
         builder: (context, appsSnapshot) {
-          return StreamBuilder(
-            stream: _firestoreService.watchTestingHistory(user.uid),
+          return StreamBuilder<List<TestingModel>>(
+            stream: _testingHistoryStream,
             builder: (context, historySnapshot) {
-              if (appsSnapshot.connectionState == ConnectionState.waiting ||
-                  historySnapshot.connectionState == ConnectionState.waiting) {
+              final isInitialAppsLoading =
+                  !appsSnapshot.hasData &&
+                  appsSnapshot.connectionState == ConnectionState.waiting;
+              final isInitialHistoryLoading =
+                  !historySnapshot.hasData &&
+                  historySnapshot.connectionState == ConnectionState.waiting;
+              if (isInitialAppsLoading || isInitialHistoryLoading) {
                 return const Center(child: CircularProgressIndicator());
               }
               if (appsSnapshot.hasError) {
@@ -137,8 +152,8 @@ class _TestScreenState extends State<TestScreen> {
                   message: '読み込み中にエラーが発生しました: ${historySnapshot.error}',
                 );
               }
-              final apps = appsSnapshot.data ?? [];
-              final testedIds = (historySnapshot.data ?? [])
+              final apps = appsSnapshot.data ?? const <AppModel>[];
+              final testedIds = (historySnapshot.data ?? const <TestingModel>[])
                   .map((item) => item.appId)
                   .toSet();
               final visibleApps = apps
@@ -166,6 +181,7 @@ class _TestScreenState extends State<TestScreen> {
                   final isOwnerApp = app.ownerUserId == user.uid;
                   final loading = _loadingAppIds.contains(app.id);
                   return AppCard(
+                    key: ValueKey(app.id),
                     app: app,
                     loading: loading,
                     isOwnerApp: isOwnerApp,
@@ -192,36 +208,45 @@ class _TestScreenState extends State<TestScreen> {
   }
 
   void _prefetchOwnerUsernames(Set<String> ownerUserIds) {
-    for (final ownerUserId in ownerUserIds) {
-      if (ownerUserId.isEmpty ||
-          _ownerDisplayInfoByUserId.containsKey(ownerUserId) ||
-          _loadingOwnerUserIds.contains(ownerUserId)) {
-        continue;
-      }
-      _loadOwnerUsername(ownerUserId);
-    }
-  }
-
-  Future<void> _loadOwnerUsername(String userId) async {
-    _loadingOwnerUserIds.add(userId);
-    try {
-      final displayInfo = await _firestoreService.fetchUserDisplayInfo(userId);
+    if (_isPrefetchingOwners) return;
+    final missingIds = ownerUserIds
+        .where(
+          (id) =>
+              id.isNotEmpty &&
+              !_ownerDisplayInfoByUserId.containsKey(id) &&
+              !_loadingOwnerUserIds.contains(id),
+        )
+        .toList();
+    if (missingIds.isEmpty) return;
+    _isPrefetchingOwners = true;
+    _loadingOwnerUserIds.addAll(missingIds);
+    Future.wait(
+      missingIds.map((id) async {
+        try {
+          final info = await _firestoreService.fetchUserDisplayInfo(id);
+          return MapEntry(id, info);
+        } catch (_) {
+          return MapEntry(
+            id,
+            UserDisplayInfo(
+              username: 'ユーザー',
+              hasInitialUserBadge: false,
+              hasOfficialBadge: false,
+            ),
+          );
+        }
+      }),
+    ).then((entries) {
       if (!mounted) return;
       setState(() {
-        _ownerDisplayInfoByUserId[userId] = displayInfo;
+        for (final entry in entries) {
+          _ownerDisplayInfoByUserId[entry.key] = entry.value;
+        }
       });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _ownerDisplayInfoByUserId[userId] = UserDisplayInfo(
-          username: 'ユーザー',
-          hasInitialUserBadge: false,
-          hasOfficialBadge: false,
-        );
-      });
-    } finally {
-      _loadingOwnerUserIds.remove(userId);
-    }
+    }).whenComplete(() {
+      _loadingOwnerUserIds.removeAll(missingIds);
+      _isPrefetchingOwners = false;
+    });
   }
 
   Future<void> _showAppDetails(String userId, AppModel app) async {
