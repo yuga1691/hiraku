@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../constants.dart';
+import '../services/app_notification_service.dart';
 import '../services/auth_service.dart';
 import '../services/analytics_service.dart';
 import '../services/firestore_service.dart';
 import '../services/onboarding_service.dart';
+import '../services/push_notification_service.dart';
 import '../widgets/cyber_background.dart';
 import 'home_screen.dart';
 
@@ -26,9 +30,14 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final AnalyticsService _analyticsService = AnalyticsService.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final OnboardingService _onboardingService = OnboardingService();
+  final AppNotificationService _appNotificationService =
+      AppNotificationService.instance;
+  final PushNotificationService _pushNotificationService =
+      PushNotificationService.instance;
 
   int _pageIndex = 0;
   bool _saving = false;
+  bool _restoringWithGoogle = false;
 
   @override
   void dispose() {
@@ -329,16 +338,37 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                 hintText: '例: 佐藤',
               ),
             ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _saving || _restoringWithGoogle
+                    ? null
+                    : _restoreWithGoogle,
+                icon: _restoringWithGoogle
+                    ? const SizedBox(
+                        width: 18,
+                        height: 18,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.account_circle_outlined),
+                label: Text(
+                  _restoringWithGoogle ? 'Googleで確認中...' : 'Googleでデータを復元',
+                ),
+              ),
+            ),
             const Spacer(),
             Row(
               children: [
                 TextButton(
-                  onPressed: _pageIndex == 0 ? null : _prevPage,
+                  onPressed: _pageIndex == 0 || _restoringWithGoogle
+                      ? null
+                      : _prevPage,
                   child: const Text('戻る'),
                 ),
                 const Spacer(),
                 FilledButton(
-                  onPressed: _saving ? null : _complete,
+                  onPressed: _saving || _restoringWithGoogle ? null : _complete,
                   child: _saving
                       ? const SizedBox(
                           width: 18,
@@ -400,6 +430,80 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     } finally {
       if (mounted) {
         setState(() => _saving = false);
+      }
+    }
+  }
+
+  Future<void> _restoreWithGoogle() async {
+    if (_restoringWithGoogle) return;
+    setState(() => _restoringWithGoogle = true);
+    try {
+      final result = await _authService.signInWithGoogle();
+      final user = result.user;
+      if (user == null) {
+        throw StateError('Googleログインしたユーザーを取得できませんでした。');
+      }
+
+      await _firestoreService.ensureUserDoc(user.uid);
+      await _analyticsService.setUserId(user.uid);
+      await _pushNotificationService.startForUser(user.uid);
+      await _appNotificationService.startForUser(user.uid);
+
+      final storedUsername = await _firestoreService.fetchStoredUsername(
+        user.uid,
+      );
+      if (storedUsername.trim().isEmpty) {
+        final displayName = user.displayName?.trim();
+        if (displayName != null &&
+            displayName.isNotEmpty &&
+            _usernameController.text.trim().isEmpty) {
+          _usernameController.text = displayName;
+        }
+        if (!mounted) return;
+        _showSnack('Googleログインしました。ユーザー名を設定してください。');
+        return;
+      }
+
+      await _onboardingService.markCompleted();
+      await _analyticsService.logOnboardingCompleted();
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (_) => const HomeScreen()));
+    } on GoogleSignInException catch (e) {
+      if (!mounted) return;
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        _showSnack('Googleログインをキャンセルしました。');
+      } else if (e.code == GoogleSignInExceptionCode.clientConfigurationError ||
+          e.code == GoogleSignInExceptionCode.providerConfigurationError) {
+        _showSnack('Googleログイン設定を確認してください。');
+      } else {
+        final detail = e.description?.trim();
+        _showSnack(
+          detail == null || detail.isEmpty
+              ? 'Googleログインに失敗しました。'
+              : 'Googleログインに失敗しました: $detail',
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'network-request-failed') {
+        _showSnack('インターネット接続を確認してください。');
+      } else if (e.code == 'account-exists-with-different-credential') {
+        _showSnack('このメールアドレスは別のログイン方法で使用されています。');
+      } else {
+        _showSnack('Googleログインに失敗しました: ${e.code}');
+      }
+    } on UnsupportedError {
+      if (!mounted) return;
+      _showSnack('この端末ではGoogleログインを開始できません。');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Googleログインに失敗しました: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _restoringWithGoogle = false);
       }
     }
   }

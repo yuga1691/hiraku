@@ -1,4 +1,4 @@
-﻿import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'dart:ui';
@@ -19,24 +19,27 @@ import 'services/onboarding_service.dart';
 import 'services/push_notification_service.dart';
 
 Future<void> main() async {
-  await runZonedGuarded(() async {
-    WidgetsFlutterBinding.ensureInitialized();
-    await Firebase.initializeApp();
+  await runZonedGuarded(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await Firebase.initializeApp();
 
-    final crashlytics = FirebaseCrashlytics.instance;
-    await crashlytics.setCrashlyticsCollectionEnabled(kReleaseMode);
+      final crashlytics = FirebaseCrashlytics.instance;
+      await crashlytics.setCrashlyticsCollectionEnabled(kReleaseMode);
 
-    FlutterError.onError = crashlytics.recordFlutterFatalError;
-    PlatformDispatcher.instance.onError = (error, stack) {
-      crashlytics.recordError(error, stack, fatal: true);
-      return true;
-    };
+      FlutterError.onError = crashlytics.recordFlutterFatalError;
+      PlatformDispatcher.instance.onError = (error, stack) {
+        crashlytics.recordError(error, stack, fatal: true);
+        return true;
+      };
 
-    await MobileAds.instance.initialize();
-    runApp(const HirakuApp());
-  }, (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-  });
+      await MobileAds.instance.initialize();
+      runApp(const HirakuApp());
+    },
+    (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    },
+  );
 }
 
 class HirakuApp extends StatelessWidget {
@@ -60,25 +63,31 @@ class HirakuApp extends StatelessWidget {
       error: Color(0xFFFF6B6B),
     );
     final baseTextTheme = ThemeData.dark().textTheme.apply(
-          fontFamily: 'NotoSansJP',
-          bodyColor: onBackground,
-          displayColor: onBackground,
-        );
+      fontFamily: 'NotoSansJP',
+      bodyColor: onBackground,
+      displayColor: onBackground,
+    );
     final weightedTextTheme = baseTextTheme.copyWith(
       bodyLarge: baseTextTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
-      bodyMedium:
-          baseTextTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+      bodyMedium: baseTextTheme.bodyMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
       bodySmall: baseTextTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-      labelLarge:
-          baseTextTheme.labelLarge?.copyWith(fontWeight: FontWeight.w600),
-      labelMedium:
-          baseTextTheme.labelMedium?.copyWith(fontWeight: FontWeight.w600),
-      labelSmall:
-          baseTextTheme.labelSmall?.copyWith(fontWeight: FontWeight.w600),
-      titleMedium:
-          baseTextTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
-      titleSmall:
-          baseTextTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+      labelLarge: baseTextTheme.labelLarge?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+      labelMedium: baseTextTheme.labelMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+      labelSmall: baseTextTheme.labelSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+      titleMedium: baseTextTheme.titleMedium?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
+      titleSmall: baseTextTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.w600,
+      ),
     );
     return MaterialApp(
       debugShowCheckedModeBanner: false,
@@ -155,9 +164,7 @@ class HirakuApp extends StatelessWidget {
         textButtonTheme: TextButtonThemeData(
           style: TextButton.styleFrom(
             foregroundColor: onSurface.withOpacity(0.85),
-            textStyle: baseTextTheme.labelLarge?.copyWith(
-              letterSpacing: 0.6,
-            ),
+            textStyle: baseTextTheme.labelLarge?.copyWith(letterSpacing: 0.6),
           ),
         ),
         snackBarTheme: SnackBarThemeData(
@@ -187,7 +194,8 @@ class _RootGateState extends State<RootGate> {
   final AnalyticsService _analyticsService = AnalyticsService.instance;
   final FirestoreService _firestoreService = FirestoreService();
   final OnboardingService _onboardingService = OnboardingService();
-  final AppNotificationService _appNotificationService = AppNotificationService();
+  final AppNotificationService _appNotificationService =
+      AppNotificationService.instance;
   final PushNotificationService _pushNotificationService =
       PushNotificationService.instance;
   late final Future<void> _initializationFuture;
@@ -221,10 +229,7 @@ class _RootGateState extends State<RootGate> {
             body: Center(
               child: Padding(
                 padding: const EdgeInsets.all(20),
-                child: Text(
-                  message,
-                  textAlign: TextAlign.center,
-                ),
+                child: Text(message, textAlign: TextAlign.center),
               ),
             ),
           );
@@ -269,7 +274,8 @@ class _RootGateState extends State<RootGate> {
   }
 
   bool _isNetworkError(Object error) {
-    if (error is FirebaseAuthException && error.code == 'network-request-failed') {
+    if (error is FirebaseAuthException &&
+        error.code == 'network-request-failed') {
       return true;
     }
     if (error is FirebaseException && error.code == 'network-request-failed') {
@@ -285,9 +291,3 @@ class _RootGateState extends State<RootGate> {
         normalized.contains('timeout');
   }
 }
-
-
-
-
-
-

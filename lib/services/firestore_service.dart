@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -44,10 +44,14 @@ class FirestoreService {
   }
 
   Future<void> updateUsername(String userId, String username) async {
-    await _users.doc(userId).set(
-      {'username': username},
-      SetOptions(merge: true),
-    );
+    await _users.doc(userId).set({
+      'username': username,
+    }, SetOptions(merge: true));
+  }
+
+  Future<String> fetchStoredUsername(String userId) async {
+    final snapshot = await _users.doc(userId).get();
+    return (snapshot.data()?['username'] ?? '') as String;
   }
 
   Stream<DocumentSnapshot<Map<String, dynamic>>> watchUser(String userId) {
@@ -61,16 +65,16 @@ class FirestoreService {
         .limit(1)
         .snapshots()
         .map((snapshot) {
-      if (snapshot.docs.isEmpty) {
-        return null;
-      }
-      final doc = snapshot.docs.first;
-      final app = AppModel.fromMap(doc.id, doc.data());
-      if (_hasExpiredRecentOpenLogs(app.recentOpenLogs)) {
-        unawaited(_pruneRecentOpenLogs(doc.reference, app.recentOpenLogs));
-      }
-      return app;
-    });
+          if (snapshot.docs.isEmpty) {
+            return null;
+          }
+          final doc = snapshot.docs.first;
+          final app = AppModel.fromMap(doc.id, doc.data());
+          if (_hasExpiredRecentOpenLogs(app.recentOpenLogs)) {
+            unawaited(_pruneRecentOpenLogs(doc.reference, app.recentOpenLogs));
+          }
+          return app;
+        });
   }
 
   Future<AppModel?> fetchMyActiveAppOnce(String userId) async {
@@ -95,19 +99,14 @@ class FirestoreService {
   }
 
   Stream<List<AppModel>> watchAvailableApps() {
-    return _apps
-        .where('isActive', isEqualTo: true)
-        .snapshots()
-        .map(
-          (snapshot) {
-            final apps = snapshot.docs
-              .map((doc) => AppModel.fromMap(doc.id, doc.data()))
-              .where((app) => app.remainingExposure > 0)
-              .toList();
-            apps.sort(_compareAvailableApps);
-            return apps;
-          },
-        );
+    return _apps.where('isActive', isEqualTo: true).snapshots().map((snapshot) {
+      final apps = snapshot.docs
+          .map((doc) => AppModel.fromMap(doc.id, doc.data()))
+          .where((app) => app.remainingExposure > 0)
+          .toList();
+      apps.sort(_compareAvailableApps);
+      return apps;
+    });
   }
 
   int _compareAvailableApps(AppModel a, AppModel b) {
@@ -189,13 +188,10 @@ class FirestoreService {
     final ownerUserId = (appData?['ownerUserId'] ?? '') as String;
     final appName = (appData?['name'] ?? '') as String;
 
-    await _apps.doc(appId).set(
-      {
-        'isActive': false,
-        'endedAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await _apps.doc(appId).set({
+      'isActive': false,
+      'endedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
     final historySnapshot = await _db.collectionGroup('testing').get();
     final batch = _db.batch();
@@ -205,20 +201,15 @@ class FirestoreService {
       if (historyAppId != appId) {
         continue;
       }
-      batch.set(
-        doc.reference,
-        {'isEndedByDeveloper': true},
-        SetOptions(merge: true),
-      );
+      batch.set(doc.reference, {
+        'isEndedByDeveloper': true,
+      }, SetOptions(merge: true));
     }
     if (historySnapshot.docs.isNotEmpty) {
       await batch.commit();
     }
 
-    await _notifyTestEndedIfOptedIn(
-      userId: ownerUserId,
-      appName: appName,
-    );
+    await _notifyTestEndedIfOptedIn(userId: ownerUserId, appName: appName);
   }
 
   Future<void> startMyAppBoost({
@@ -243,7 +234,8 @@ class FirestoreService {
       final data = appSnap.data()!;
       final now = DateTime.now();
       final currentBoostUntil = (data['boostUntil'] as dynamic)?.toDate();
-      final base = currentBoostUntil is DateTime && currentBoostUntil.isAfter(now)
+      final base =
+          currentBoostUntil is DateTime && currentBoostUntil.isAfter(now)
           ? currentBoostUntil
           : now;
       final nextBoostUntil = base.add(duration);
@@ -289,13 +281,14 @@ class FirestoreService {
     required String userId,
     required String notificationId,
   }) async {
-    await _users.doc(userId).collection('adminNotifications').doc(notificationId).set(
-      {
-        'isRead': true,
-        'readAt': FieldValue.serverTimestamp(),
-      },
-      SetOptions(merge: true),
-    );
+    await _users
+        .doc(userId)
+        .collection('adminNotifications')
+        .doc(notificationId)
+        .set({
+          'isRead': true,
+          'readAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
   }
 
   Future<String> fetchUsername(String userId) async {
@@ -321,8 +314,9 @@ class FirestoreService {
   Future<void> deleteUserData(String userId) async {
     final userRef = _users.doc(userId);
     final testingSnapshot = await userRef.collection('testing').get();
-    final ownedAppsSnapshot =
-        await _apps.where('ownerUserId', isEqualTo: userId).get();
+    final ownedAppsSnapshot = await _apps
+        .where('ownerUserId', isEqualTo: userId)
+        .get();
 
     final batch = _db.batch();
     for (final doc in testingSnapshot.docs) {
@@ -355,8 +349,10 @@ class FirestoreService {
         ? null
         : myActiveAppSnapshot.docs.first.reference;
 
-    final historyRef =
-        _users.doc(currentUserId).collection('testing').doc(targetApp.id);
+    final historyRef = _users
+        .doc(currentUserId)
+        .collection('testing')
+        .doc(targetApp.id);
 
     await _db.runTransaction((tx) async {
       final targetSnap = await tx.get(targetRef);
@@ -393,11 +389,9 @@ class FirestoreService {
         if (isFirstOpenByUser) 'remainingExposure': FieldValue.increment(-1),
       });
 
-      tx.set(
-        userRef,
-        {'testedCountTotal': FieldValue.increment(1)},
-        SetOptions(merge: true),
-      );
+      tx.set(userRef, {
+        'testedCountTotal': FieldValue.increment(1),
+      }, SetOptions(merge: true));
 
       if (myActiveAppRef != null) {
         tx.update(myActiveAppRef, {
@@ -418,8 +412,10 @@ class FirestoreService {
       if (isFirstOpenByUser &&
           target.ownerUserId.isNotEmpty &&
           target.ownerUserId != currentUserId) {
-        final notifyRef =
-            _users.doc(target.ownerUserId).collection('notifications').doc();
+        final notifyRef = _users
+            .doc(target.ownerUserId)
+            .collection('notifications')
+            .doc();
         tx.set(notifyRef, {
           'type': 'tester_joined',
           'testerUserId': currentUserId,
@@ -468,8 +464,10 @@ class FirestoreService {
         ? null
         : myActiveAppSnapshot.docs.first.reference;
 
-    final historyRef =
-        _users.doc(currentUserId).collection('testing').doc(history.appId);
+    final historyRef = _users
+        .doc(currentUserId)
+        .collection('testing')
+        .doc(history.appId);
 
     await _db.runTransaction((tx) async {
       final targetSnap = await tx.get(targetRef);
@@ -503,11 +501,9 @@ class FirestoreService {
         if (isFirstOpenByUser) 'remainingExposure': FieldValue.increment(-1),
       });
 
-      tx.set(
-        userRef,
-        {'testedCountTotal': FieldValue.increment(1)},
-        SetOptions(merge: true),
-      );
+      tx.set(userRef, {
+        'testedCountTotal': FieldValue.increment(1),
+      }, SetOptions(merge: true));
 
       if (myActiveAppRef != null) {
         tx.update(myActiveAppRef, {
@@ -598,10 +594,7 @@ class FirestoreService {
     }).toList();
     if (dateKey.isNotEmpty && testerAppName.isNotEmpty) {
       filtered.add(
-        AppOpenLogEntry(
-          dateKey: dateKey,
-          testerAppName: testerAppName,
-        ),
+        AppOpenLogEntry(dateKey: dateKey, testerAppName: testerAppName),
       );
     }
     return filtered.map((entry) => entry.toMap()).toList();
@@ -609,9 +602,11 @@ class FirestoreService {
 
   DateTime _recentOpenLogCutoff() {
     final now = DateTime.now().toLocal();
-    return DateTime(now.year, now.month, now.day).subtract(
-      const Duration(days: 6),
-    );
+    return DateTime(
+      now.year,
+      now.month,
+      now.day,
+    ).subtract(const Duration(days: 6));
   }
 
   DateTime? _tryParseDateKey(String dateKey) {
@@ -623,5 +618,3 @@ class FirestoreService {
     }
   }
 }
-
-

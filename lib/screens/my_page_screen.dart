@@ -1,15 +1,17 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:intl/intl.dart';
 
 import '../models/app_model.dart';
 import '../models/testing_model.dart';
 import '../services/analytics_service.dart';
 import '../services/admin_feedback_service.dart';
+import '../services/auth_service.dart';
 import '../services/firestore_service.dart';
 import '../services/launcher_service.dart';
 import '../services/local_notification_service.dart';
@@ -27,6 +29,7 @@ class MyPageScreen extends StatefulWidget {
 
 class _MyPageScreenState extends State<MyPageScreen> {
   final AnalyticsService _analyticsService = AnalyticsService.instance;
+  final AuthService _authService = AuthService();
   final FirestoreService _firestoreService = FirestoreService();
   final LauncherService _launcherService = LauncherService();
   final DateFormat _dateFormat = DateFormat('yyyy/MM/dd HH:mm');
@@ -36,6 +39,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   static const String _privacyPolicyUrl =
       'https://yuga1691.github.io/hiraku-privacy/';
   bool _requestingNotificationPermission = false;
+  bool _linkingGoogleAccount = false;
   bool _isUserInfoExpanded = false;
   bool _isNotificationExpanded = false;
   final Map<String, Stream<AppModel?>> _myActiveAppStreams = {};
@@ -44,8 +48,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
   static const _helpSections = [
     UsageHelpSection(
       title: 'マイユーザーのアプリを開く',
-      body:
-          'テスト履歴から「開く」ボタンを押すと、アプリを起動できます。未インストールの場合はストアページへ遷移します。',
+      body: 'テスト履歴から「開く」ボタンを押すと、アプリを起動できます。未インストールの場合はストアページへ遷移します。',
       assetPath: 'assets/guide/1-4.jpg',
     ),
   ];
@@ -216,12 +219,13 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       stream: _firestoreService.watchAdminNotifications(userId),
                       builder: (context, snapshot) {
                         if (snapshot.hasError) {
-                          return const Center(
-                            child: Text('通知の取得に失敗しました。'),
-                          );
+                          return const Center(child: Text('通知の取得に失敗しました。'));
                         }
-                        if (snapshot.connectionState == ConnectionState.waiting) {
-                          return const Center(child: CircularProgressIndicator());
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
                         }
                         final docs = snapshot.data?.docs ?? [];
                         if (docs.isEmpty) {
@@ -251,17 +255,17 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                     ? Icons.mark_email_read_outlined
                                     : Icons.mark_email_unread_outlined,
                                 color: isRead
-                                    ? Theme.of(context)
-                                        .colorScheme
-                                        .onSurface
-                                        .withOpacity(0.6)
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.onSurface.withOpacity(0.6)
                                     : Theme.of(context).colorScheme.primary,
                               ),
                               title: Text(
                                 title,
                                 style: TextStyle(
-                                  fontWeight:
-                                      isRead ? FontWeight.w500 : FontWeight.w700,
+                                  fontWeight: isRead
+                                      ? FontWeight.w500
+                                      : FontWeight.w700,
                                 ),
                               ),
                               subtitle: createdAt == null
@@ -275,10 +279,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
                                   createdAt: createdAt,
                                 );
                                 if (!isRead) {
-                                  await _firestoreService.markAdminNotificationAsRead(
-                                    userId: userId,
-                                    notificationId: doc.id,
-                                  );
+                                  await _firestoreService
+                                      .markAdminNotificationAsRead(
+                                        userId: userId,
+                                        notificationId: doc.id,
+                                      );
                                 }
                               },
                             );
@@ -316,9 +321,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               if (createdAt != null) const SizedBox(height: 8),
-              Text(
-                body.trim().isEmpty ? '本文はありません。' : body.trim(),
-              ),
+              Text(body.trim().isEmpty ? '本文はありません。' : body.trim()),
             ],
           ),
         ),
@@ -342,6 +345,9 @@ class _MyPageScreenState extends State<MyPageScreen> {
         final hasInitialUserBadge =
             (data['hasInitialUserBadge'] ?? false) as bool;
         final hasOfficialBadge = (data['hasOfficialBadge'] ?? false) as bool;
+        final isGoogleLinked = _authService.isGoogleLinked(
+          _authService.currentUser,
+        );
         return Card(
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -354,13 +360,18 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     const Expanded(
                       child: Text(
                         'ユーザー情報',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                     IconButton(
                       tooltip: _isUserInfoExpanded ? '閉じる' : '開く',
                       onPressed: () {
-                        setState(() => _isUserInfoExpanded = !_isUserInfoExpanded);
+                        setState(
+                          () => _isUserInfoExpanded = !_isUserInfoExpanded,
+                        );
                       },
                       icon: Icon(
                         _isUserInfoExpanded
@@ -404,11 +415,46 @@ class _MyPageScreenState extends State<MyPageScreen> {
                       const SizedBox(height: 4),
                       Text('あなたがテストした回数: $testedCount'),
                       const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        onPressed: isGoogleLinked || _linkingGoogleAccount
+                            ? null
+                            : _linkGoogleAccount,
+                        icon: _linkingGoogleAccount
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : Icon(
+                                isGoogleLinked
+                                    ? Icons.verified_user_outlined
+                                    : Icons.account_circle_outlined,
+                              ),
+                        label: Text(
+                          _linkingGoogleAccount
+                              ? 'Google連携中...'
+                              : isGoogleLinked
+                              ? 'Google連携済み'
+                              : 'Googleアカウントと連携',
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        isGoogleLinked
+                            ? 'Google連携済みです。アプリを削除・再インストールしても、このGoogleアカウントでデータを復元できます。'
+                            : 'Googleアカウントと連携すると、アプリを削除・再インストールしてもデータを引き継げます。',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withOpacity(0.75),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       FilledButton.tonal(
                         onPressed: () => _editUsername(userId, username),
-                        child: const Text(
-                          'ユーザー名を変更',
-                        ),
+                        child: const Text('ユーザー名を変更'),
                       ),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
@@ -417,9 +463,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Theme.of(context).colorScheme.error,
                         ),
-                        label: const Text(
-                          'アカウント削除',
-                        ),
+                        label: const Text('アカウント削除'),
                       ),
                     ],
                   ),
@@ -537,9 +581,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
                 ),
                 const SizedBox(height: 8),
                 if (app == null)
-                  const Text(
-                    '登録中のアプリはありません。',
-                  )
+                  const Text('登録中のアプリはありません。')
                 else
                   MyAppCard(app: app),
               ],
@@ -574,7 +616,8 @@ class _MyPageScreenState extends State<MyPageScreen> {
               stream: myActiveAppStream,
               builder: (context, snapshot) {
                 final myApp = snapshot.data;
-                final openedByTesterAppName = myApp?.openCountByTesterAppName ?? {};
+                final openedByTesterAppName =
+                    myApp?.openCountByTesterAppName ?? {};
                 return StreamBuilder<List<TestingModel>>(
                   stream: testingHistoryStream,
                   builder: (context, historySnapshot) {
@@ -588,46 +631,41 @@ class _MyPageScreenState extends State<MyPageScreen> {
                     if (safeItems.isEmpty) {
                       return const EmptyState(
                         title: '履歴がありません',
-                        message:
-                            'テストしたアプリがここに表示されます。',
+                        message: 'テストしたアプリがここに表示されます。',
                       );
                     }
                     return Column(
-                      children: safeItems
-                          .map(
-                            (item) {
-                              final openCountByOtherToMe =
-                                  openedByTesterAppName[item.name] ?? 0;
-                              return ListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: Wrap(
-                                  spacing: 4,
-                                  runSpacing: 2,
-                                  children: [
-                                    Text(item.name),
-                                    if (item.isEndedByDeveloper)
-                                      Text(
-                                        '（テスト終了）',
-                                        style: TextStyle(
-                                          color: Theme.of(context).colorScheme.error,
-                                          fontSize: 12,
-                                        ),
-                                      ),
-                                  ],
+                      children: safeItems.map((item) {
+                        final openCountByOtherToMe =
+                            openedByTesterAppName[item.name] ?? 0;
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Wrap(
+                            spacing: 4,
+                            runSpacing: 2,
+                            children: [
+                              Text(item.name),
+                              if (item.isEndedByDeveloper)
+                                Text(
+                                  '（テスト終了）',
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.error,
+                                    fontSize: 12,
+                                  ),
                                 ),
-                                subtitle: Text(
-                                  'あなた→相手: ${item.openCountByMe}回 / 相手→あなた: ${openCountByOtherToMe}回'
-                                  '${item.lastOpenedAt == null ? '' : '\n最終: ${_dateFormat.format(item.lastOpenedAt!)}'}',
-                                ),
-                                onTap: () => _openTestedApp(item),
-                                trailing: FilledButton.tonal(
-                                  onPressed: () => _openTestedApp(item),
-                                  child: const Text('開く'),
-                                ),
-                              );
-                            },
-                          )
-                          .toList(),
+                            ],
+                          ),
+                          subtitle: Text(
+                            'あなた→相手: ${item.openCountByMe}回 / 相手→あなた: ${openCountByOtherToMe}回'
+                            '${item.lastOpenedAt == null ? '' : '\n最終: ${_dateFormat.format(item.lastOpenedAt!)}'}',
+                          ),
+                          onTap: () => _openTestedApp(item),
+                          trailing: FilledButton.tonal(
+                            onPressed: () => _openTestedApp(item),
+                            child: const Text('開く'),
+                          ),
+                        );
+                      }).toList(),
                     );
                   },
                 );
@@ -641,9 +679,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
 
   Future<void> _openTestedApp(TestingModel item) async {
     if (item.playUrl.isEmpty && item.packageName.isEmpty) {
-      _showSnack(
-        'URLが設定されていません。',
-      );
+      _showSnack('URLが設定されていません。');
       return;
     }
     try {
@@ -661,9 +697,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
               playUrl: item.playUrl,
             );
       if (!opened) {
-        _showSnack(
-          'ストアを開けませんでした。URLを確認してください。',
-        );
+        _showSnack('ストアを開けませんでした。URLを確認してください。');
       }
     } catch (e) {
       _showSnack('起動に失敗しました: $e');
@@ -678,9 +712,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
         title: const Text('ユーザー名を変更'),
         content: TextField(
           controller: controller,
-          decoration: const InputDecoration(
-            labelText: 'ユーザー名',
-          ),
+          decoration: const InputDecoration(labelText: 'ユーザー名'),
         ),
         actions: [
           TextButton(
@@ -698,14 +730,60 @@ class _MyPageScreenState extends State<MyPageScreen> {
     await _firestoreService.updateUsername(userId, result);
   }
 
+  Future<void> _linkGoogleAccount() async {
+    if (_linkingGoogleAccount) return;
+    setState(() => _linkingGoogleAccount = true);
+    try {
+      await _authService.linkCurrentUserWithGoogle();
+      if (!mounted) return;
+      setState(() {});
+      _showSnack('Googleアカウントと連携しました。');
+    } on GoogleSignInException catch (e) {
+      if (!mounted) return;
+      if (e.code == GoogleSignInExceptionCode.canceled ||
+          e.code == GoogleSignInExceptionCode.interrupted) {
+        _showSnack('Google連携をキャンセルしました。');
+      } else if (e.code == GoogleSignInExceptionCode.clientConfigurationError ||
+          e.code == GoogleSignInExceptionCode.providerConfigurationError) {
+        _showSnack('Googleログイン設定を確認してください。');
+      } else {
+        final detail = e.description?.trim();
+        _showSnack(
+          detail == null || detail.isEmpty
+              ? 'Google連携に失敗しました。'
+              : 'Google連携に失敗しました: $detail',
+        );
+      }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'provider-already-linked') {
+        _showSnack('すでにGoogleアカウントと連携済みです。');
+      } else if (e.code == 'credential-already-in-use') {
+        _showSnack('このGoogleアカウントはすでに別のユーザーで使用されています。');
+      } else if (e.code == 'network-request-failed') {
+        _showSnack('インターネット接続を確認してください。');
+      } else {
+        _showSnack('Google連携に失敗しました: ${e.code}');
+      }
+    } on UnsupportedError {
+      if (!mounted) return;
+      _showSnack('この端末ではGoogleログインを開始できません。');
+    } catch (e) {
+      if (!mounted) return;
+      _showSnack('Google連携に失敗しました: $e');
+    } finally {
+      if (mounted) {
+        setState(() => _linkingGoogleAccount = false);
+      }
+    }
+  }
+
   Future<void> _confirmDeleteAccount(String userId) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('アカウント削除'),
-        content: const Text(
-          'この操作は取り消せません。本当に削除しますか？',
-        ),
+        content: const Text('この操作は取り消せません。本当に削除しますか？'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -731,15 +809,11 @@ class _MyPageScreenState extends State<MyPageScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              '削除するには「削除」と入力してください。',
-            ),
+            const Text('削除するには「削除」と入力してください。'),
             const SizedBox(height: 8),
             TextField(
               controller: inputController,
-              decoration: const InputDecoration(
-                labelText: '確認入力',
-              ),
+              decoration: const InputDecoration(labelText: '確認入力'),
             ),
           ],
         ),
@@ -758,9 +832,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     );
 
     if (confirmText != '削除') {
-      _showSnack(
-        '「削除」と入力した場合のみ削除できます。',
-      );
+      _showSnack('「削除」と入力した場合のみ削除できます。');
       return;
     }
 
@@ -774,18 +846,12 @@ class _MyPageScreenState extends State<MyPageScreen> {
       );
     } on FirebaseAuthException catch (e) {
       if (e.code == 'requires-recent-login') {
-        _showSnack(
-          '再ログイン後に再度お試しください。',
-        );
+        _showSnack('再ログイン後に再度お試しください。');
       } else {
-        _showSnack(
-          'アカウント削除に失敗しました: ${e.code}',
-        );
+        _showSnack('アカウント削除に失敗しました: ${e.code}');
       }
     } catch (e) {
-      _showSnack(
-        'アカウント削除に失敗しました: $e',
-      );
+      _showSnack('アカウント削除に失敗しました: $e');
     }
   }
 
@@ -829,10 +895,7 @@ class _MyPageScreenState extends State<MyPageScreen> {
     ).showSnackBar(SnackBar(content: Text(message)));
   }
 
-  Widget _buildAnimatedExpand({
-    required bool expanded,
-    required Widget child,
-  }) {
+  Widget _buildAnimatedExpand({required bool expanded, required Widget child}) {
     return AnimatedSize(
       duration: const Duration(milliseconds: 240),
       curve: Curves.easeInOutCubic,
@@ -854,7 +917,8 @@ class _DeveloperFeedbackSheet extends StatefulWidget {
   final String userId;
 
   @override
-  State<_DeveloperFeedbackSheet> createState() => _DeveloperFeedbackSheetState();
+  State<_DeveloperFeedbackSheet> createState() =>
+      _DeveloperFeedbackSheetState();
 }
 
 class _DeveloperFeedbackSheetState extends State<_DeveloperFeedbackSheet> {
@@ -990,10 +1054,7 @@ class _AccountDeletedNoticeScreen extends StatelessWidget {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'この操作は取り消せません。',
-                textAlign: TextAlign.center,
-              ),
+              const Text('この操作は取り消せません。', textAlign: TextAlign.center),
               const SizedBox(height: 20),
               FilledButton(
                 onPressed: () {
@@ -1012,7 +1073,7 @@ class _AccountDeletedNoticeScreen extends StatelessWidget {
   }
 }
 
-class _PressHintBadge extends StatefulWidget {
+class _PressHintBadge extends StatelessWidget {
   const _PressHintBadge({
     required this.icon,
     required this.color,
@@ -1024,82 +1085,15 @@ class _PressHintBadge extends StatefulWidget {
   final String hint;
 
   @override
-  State<_PressHintBadge> createState() => _PressHintBadgeState();
-}
-
-class _PressHintBadgeState extends State<_PressHintBadge> {
-  bool _showHint = false;
-  Timer? _hideTimer;
-
-  void _setHintVisible(bool visible) {
-    _hideTimer?.cancel();
-    if (_showHint == visible) return;
-    setState(() => _showHint = visible);
-  }
-
-  void _scheduleHideHint() {
-    _hideTimer?.cancel();
-    _hideTimer = Timer(const Duration(milliseconds: 300), () {
-      if (!mounted) return;
-      _setHintVisible(false);
-    });
-  }
-
-  @override
-  void dispose() {
-    _hideTimer?.cancel();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: 16,
-      height: 16,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTapDown: (_) => _setHintVisible(true),
-              onTapUp: (_) => _scheduleHideHint(),
-              onTapCancel: _scheduleHideHint,
-              child: Icon(
-                widget.icon,
-                size: 16,
-                color: widget.color,
-              ),
-            ),
-          ),
-          if (_showHint)
-            Positioned(
-              bottom: 22,
-              right: -8,
-              child: Material(
-                color: Colors.black.withOpacity(0.88),
-                elevation: 4,
-                borderRadius: BorderRadius.circular(8),
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 220),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    child: Text(
-                      widget.hint,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        height: 1.2,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-        ],
+    return Tooltip(
+      message: hint,
+      triggerMode: TooltipTriggerMode.tap,
+      showDuration: const Duration(seconds: 3),
+      child: SizedBox(
+        width: 24,
+        height: 24,
+        child: Center(child: Icon(icon, size: 16, color: color)),
       ),
     );
   }

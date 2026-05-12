@@ -5,6 +5,10 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'local_notification_service.dart';
 
 class AppNotificationService {
+  AppNotificationService._();
+
+  static final AppNotificationService instance = AppNotificationService._();
+
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   StreamSubscription<QuerySnapshot<Map<String, dynamic>>>? _subscription;
   final Set<String> _processingDocIds = <String>{};
@@ -19,12 +23,12 @@ class AppNotificationService {
         .where('isNotified', isEqualTo: false)
         .snapshots()
         .listen((snapshot) {
-      for (final doc in snapshot.docs) {
-        if (_processingDocIds.add(doc.id)) {
-          unawaited(_processNotification(userId: userId, doc: doc));
-        }
-      }
-    });
+          for (final doc in snapshot.docs) {
+            if (_processingDocIds.add(doc.id)) {
+              unawaited(_processNotification(userId: userId, doc: doc));
+            }
+          }
+        });
   }
 
   Future<void> _processNotification({
@@ -46,9 +50,9 @@ class AppNotificationService {
           .collection('notifications')
           .doc(doc.id)
           .set({
-        'isNotified': true,
-        'notifiedAt': FieldValue.serverTimestamp(),
-      }, SetOptions(merge: true));
+            'isNotified': true,
+            'notifiedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
     } finally {
       _processingDocIds.remove(doc.id);
     }
