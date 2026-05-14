@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "316911139574-r7rpd8ggtucotbmjqhdhslvrd6k2bjo1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yuga.hiraku",
+            "certificate_hash": "b315f78adb63041a0161a0c6026f5a9863cfc232"
+          }
+        },
+        {
           "client_id": "316911139574-137qdirr5l9n1m4takgn4c5vidub4mda.apps.googleusercontent.com",
           "client_type": 3
         }
